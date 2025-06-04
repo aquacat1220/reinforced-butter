@@ -5,3 +5,14 @@
 # Ex. Installing a local python module with `pip install .`.
 
 echo "Bootstrapping the container!"
+
+echo "Installing CybOrg for the first time, following instructions from \"https://cage-challenge.github.io/cage-challenge-4/pages/tutorials/01_Getting_Started/1_Introduction/\""
+
+cd cage-challenge-4
+pip install -r Requirements.txt
+pip install -e .
+
+cd ..
+
+cd cage-4-submission
+pip install -r requirements.txt

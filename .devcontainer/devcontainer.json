@@ -1,5 +1,5 @@
 {
-	"name": "dev-container-template",
+	"name": "reinforced-butter",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"args": {
