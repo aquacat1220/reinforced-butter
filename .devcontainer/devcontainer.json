@@ -1,0 +1,17 @@
+{
+	"name": "dev-container-template",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"host_username": "${localEnv:USERNAME:anonymous_kitten}"
+		}
+	},
+	"containerUser": "${localEnv:USERNAME:anonymous_kitten}",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/home/${localEnv:USERNAME:anonymous_kitten}/${localWorkspaceFolderBasename},type=bind",
+	"workspaceFolder": "/home/${localEnv:USERNAME:anonymous_kitten}/${localWorkspaceFolderBasename}",
+	"customizations": {
+		"vscode": {
+			"extensions": []
+		}
+	}
+}
