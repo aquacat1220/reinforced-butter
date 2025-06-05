@@ -6,6 +6,9 @@
 			"host_username": "${localEnv:USERNAME:anonymous_kitten}"
 		}
 	},
+	"runArgs": [
+		"--gpus=all"
+	],
 	"containerUser": "${localEnv:USERNAME:anonymous_kitten}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/home/${localEnv:USERNAME:anonymous_kitten}/${localWorkspaceFolderBasename},type=bind",
 	"workspaceFolder": "/home/${localEnv:USERNAME:anonymous_kitten}/${localWorkspaceFolderBasename}",
@@ -13,5 +16,6 @@
 		"vscode": {
 			"extensions": []
 		}
-	}
+	},
+	"onCreateCommand": "./.devcontainer/bootstrap.sh"
 }
