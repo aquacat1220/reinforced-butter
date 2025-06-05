@@ -14,7 +14,10 @@
 	"workspaceFolder": "/home/${localEnv:USERNAME:anonymous_kitten}/${localWorkspaceFolderBasename}",
 	"customizations": {
 		"vscode": {
-			"extensions": []
+			"extensions": [
+				"ms-python.python",
+				"ms-toolsai.jupyter"
+			]
 		}
 	},
 	"onCreateCommand": "./.devcontainer/bootstrap.sh"

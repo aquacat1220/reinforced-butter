@@ -16,6 +16,7 @@ RUN echo "${HOST_USERNAME}:${HOST_USERNAME}" | chpasswd
 
 # ---------------- Start commands to run as root ----------------
 
+RUN apt-get install wget build-essential git -y
 
 # ---------------- End commands to run as root ----------------
 
