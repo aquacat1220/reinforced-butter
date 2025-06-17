@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM python:3.10
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -13,18 +13,19 @@ RUN useradd --create-home --shell /bin/bash -G sudo ${HOST_USERNAME}
 RUN apt-get install -y sudo
 RUN echo "${HOST_USERNAME}:${HOST_USERNAME}" | chpasswd
 
-
 # ---------------- Start commands to run as root ----------------
 
+# Following "https://cage-challenge.github.io/cage-challenge-4/pages/tutorials/01_Getting_Started/1_Introduction/".
+RUN apt install python3-tk --assume-yes
 
 # ---------------- End commands to run as root ----------------
 
 USER ${HOST_USERNAME}
 WORKDIR /home/${HOST_USERNAME}
 
-
 # ---------------- Start commands to run as user ----------------
 
+RUN mkdir -p ~/.local/bin
 
 # ---------------- End commands to run as user ----------------
 
