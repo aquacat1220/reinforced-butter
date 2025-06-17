@@ -6,6 +6,9 @@
 
 echo "Bootstrapping the container!"
 
+# Install `ipykernel` for running cells with python 3.10.
+pip install ipykernel
+
 echo "Installing CybOrg for the first time, following instructions from \"https://cage-challenge.github.io/cage-challenge-4/pages/tutorials/01_Getting_Started/1_Introduction/\""
 
 cd external/cage-challenge-4
