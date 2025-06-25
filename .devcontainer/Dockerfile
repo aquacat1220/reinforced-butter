@@ -21,6 +21,7 @@ RUN echo "${HOST_USERNAME}:${HOST_USERNAME}" | chpasswd
 
 USER ${HOST_USERNAME}
 WORKDIR /home/${HOST_USERNAME}
+RUN mkdir -p ~/.local/bin
 
 
 # ---------------- Start commands to run as user ----------------
