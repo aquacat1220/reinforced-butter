@@ -66,23 +66,23 @@ class PacmanCore:
         self, player: str, ghosts: list[str] = [], num_power: int = 4, seed: int = 1220
     ):
         self._rng = np.random.default_rng(seed)
-        self._player: dict[str, tuple[int, int] | None] = {player: None}
-        self._ghosts: dict[str, tuple[int, int] | None] = {
+        self.player: dict[str, tuple[int, int] | None] = {player: None}
+        self.ghosts: dict[str, tuple[int, int] | None] = {
             ghost: None for ghost in ghosts
         }
         self._num_power = num_power
-        self._map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
-        self._score: int = 0
+        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
+        self.score: int = 0
         self._player_power_remaining = 0
-        self._terminated: bool = True
-        self._remaining_dots = DOTS_IN_TEMPLATE
+        self.terminated: bool = True
+        self._remaining_dots = np.count_nonzero(self.map & 8)
         self.reset()
 
     def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
         while True:
             h = self._rng.integers(0, HEIGHT, dtype=int)
             w = self._rng.integers(0, WIDTH, dtype=int)
-            if not self._map[h, w] & filter:
+            if not self.map[h, w] & filter:
                 return (h, w)
 
     def _get_adjacent(
@@ -118,43 +118,48 @@ class PacmanCore:
                 return None
 
     def _valid_agent(self, agent: str) -> bool:
-        if agent in self._player or agent in self._ghosts:
+        if agent in self.player or agent in self.ghosts:
             return True
         return False
 
     def reset(self):
-        self._map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
-        self._score: int = 0
+        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
+        self.score: int = 0
         self._player_power_remaining = 0
-        self._terminated: bool = False
-        self._remaining_dots = DOTS_IN_TEMPLATE
+        self.terminated: bool = False
 
-        for player in self._player:
+        for player in self.player:
             player_pos = self._get_random(WALL | PLAYER)
-            self._map[player_pos] ^= PLAYER
-            self._player[player] = player_pos
+            self.map[player_pos] ^= (
+                PLAYER | DOT
+            )  # Players are always spawned on dots. Remove the dot we spawned on.
+            self.player[player] = player_pos
 
-        for ghost in self._ghosts:
+        for ghost in self.ghosts:
             ghost_pos = self._get_random(WALL | PLAYER | GHOST)
-            self._map[ghost_pos] ^= GHOST
-            self._ghosts[ghost] = ghost_pos
+            self.map[ghost_pos] ^= GHOST
+            self.ghosts[ghost] = ghost_pos
 
-        for i in range(self._num_power):
-            power_pos = self._get_random(WALL | POWER)
-            self._map[power_pos] ^= POWER
+        for _ in range(self._num_power):
+            power_pos = self._get_random(WALL | POWER | PLAYER)
+            self.map[power_pos] ^= (
+                POWER | DOT
+            )  # Powers are also always spawned on dots. Remove the dot.
+
+        self._remaining_dots = np.count_nonzero(self.map & 8)
 
     def perform_action(self, agent: str, action: int):
+        if self.terminated:
+            return
         if not self._valid_agent(agent):
             return
-        if self._terminated:
-            return
-        if agent in self._player:
+        if agent in self.player:
             self.perform_player_action(agent, action)
-        if agent in self._ghosts:
+        if agent in self.ghosts:
             self.perform_ghost_action(agent, action)
 
     def perform_ghost_action(self, ghost: str, action: int):
-        ghost_pos = self._ghosts[ghost]
+        ghost_pos = self.ghosts[ghost]
         if ghost_pos is None:
             return
 
@@ -162,94 +167,100 @@ class PacmanCore:
             # Ghosts cannot move during power.
             return
 
+        if action == STAY:
+            return
+
         new_pos = self._get_adjacent(ghost_pos, action)
         if new_pos is None:
             # `action` moves ghost out of map boundaries.
             return
-        if self._map[new_pos] & WALL:
+        if self.map[new_pos] & WALL:
             # `action` moves ghost into a  wall.
             return
 
-        if self._map[new_pos] & GHOST:
+        if self.map[new_pos] & GHOST:
             # `action` moves ghost into another ghost.
             return
 
-        if self._map[new_pos] & PLAYER:
+        if self.map[new_pos] & PLAYER:
             # If the new tile has a player, remove player from map, update `self._player`, add lose score, and terminate game.
-            self._map[new_pos] ^= PLAYER
-            for player in self._player:
-                if self._player[player] == new_pos:
-                    self._player[player] = None
+            self.map[new_pos] ^= PLAYER
+            for player in self.player:
+                if self.player[player] == new_pos:
+                    self.player[player] = None
                     break
                 raise Exception("Unreachable")
-            self._score += LOSE_SCORE
-            self._terminated = True
+            self.score += LOSE_SCORE
+            self.terminated = True
 
         # And move the ghost.
-        self._map[ghost_pos] ^= GHOST
-        self._map[new_pos] ^= GHOST
-        self._ghosts[ghost] = new_pos
+        self.map[ghost_pos] ^= GHOST
+        self.map[new_pos] ^= GHOST
+        self.ghosts[ghost] = new_pos
         return
 
     def perform_player_action(self, player: str, action: int):
-        player_pos = self._player[player]
+        player_pos = self.player[player]
         if player_pos is None:
             return
 
         if self._player_power_remaining > 0:
             self._player_power_remaining -= 1
 
+        if action == STAY:
+            return
+
         new_pos = self._get_adjacent(player_pos, action)
         if new_pos is None:
             # `action` moves the player out of map boundaries.
             return
-        if self._map[new_pos] & WALL:
+        if self.map[new_pos] & WALL:
             # `action` moves the player into a wall.
             return
 
-        if self._map[new_pos] & DOT:
+        if self.map[new_pos] & DOT:
             # If the new tile has a dot, consume it, add to score, and decrement dot count.
-            self._map[new_pos] ^= DOT
-            self._score += DOT_SCORE
+            self.map[new_pos] ^= DOT
+            self.score += DOT_SCORE
             self._remaining_dots -= 1
             if self._remaining_dots == 0:
                 # If all dots were consumed, add win score, and terminate game.
-                self._map[player_pos] ^= PLAYER
-                self._map[new_pos] ^= PLAYER
-                self._player[player] = new_pos
-                self._score += WIN_SCORE
-                self._terminated = True
+                self.map[player_pos] ^= PLAYER
+                self.map[new_pos] ^= PLAYER
+                self.player[player] = new_pos
+                self.score += WIN_SCORE
+                self.terminated = True
                 return
 
-        if self._map[new_pos] & POWER:
+        if self.map[new_pos] & POWER:
             # If the new tile has a power, consume it, add to score, and refresh power.
-            self._map[new_pos] ^= POWER
-            self._score += POWER_SCORE
+            self.map[new_pos] ^= POWER
+            self.score += POWER_SCORE
             self._player_power_remaining = POWER_DURATION
 
-        if self._map[new_pos] & PLAYER:
+        if self.map[new_pos] & PLAYER:
             # The new tile cannot have a player, since there is always a single player.
             raise Exception("Unreachable.")
 
-        if self._map[new_pos] & GHOST:
+        if self.map[new_pos] & GHOST:
             # If the new tile has a ghost, check power.
             if self._player_power_remaining > 0:
                 # If we have power, remove ghost from map, update `self._ghosts`, and add to score.
-                self._map[new_pos] ^= GHOST
-                for ghost in self._ghosts:
-                    if self._ghosts[ghost] == new_pos:
-                        self._ghosts[ghost] = None
+                self.map[new_pos] ^= GHOST
+                for ghost in self.ghosts:
+                    if self.ghosts[ghost] == new_pos:
+                        self.ghosts[ghost] = None
                         break
-                self._score += GHOST_KILL_SCORE
+                self.score += GHOST_KILL_SCORE
             else:
                 # If we don't have power, remove player from map, update `self._player`, add lose score, and terminate game.
-                self._map[player_pos] ^= PLAYER
-                self._player[player] = None
-                self._score += LOSE_SCORE
-                self._terminated = True
+                self.map[player_pos] ^= PLAYER
+                self.player[player] = None
+                self.score += LOSE_SCORE
+                self.terminated = True
                 return
         # If player was not killed by a ghost, move player to new position.
-        self._map[player_pos] ^= PLAYER
-        self._map[new_pos] ^= PLAYER
-        self._player[player] = new_pos
+        self.map[player_pos] ^= PLAYER
+        self.map[new_pos] ^= PLAYER
+        self.player[player] = new_pos
         return
