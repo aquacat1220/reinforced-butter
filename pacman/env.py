@@ -2,7 +2,7 @@ from pettingzoo import ParallelEnv  # type: ignore
 from gymnasium.spaces import Box, Discrete
 import numpy as np
 from typing import Any
-from pacman import PacmanCore
+from .core import PacmanCore
 
 
 class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.float32]], int]):
@@ -20,13 +20,19 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.float32]], int]):
             )
         self._render_mode = render_mode
         self._agent_sight_limit = agent_sight_limit
-        self._agents: list[str] = ["player"]
+        self._player: str = "player"
+        self._ghosts: list[str] = []
         for i in range(ghost_count):
-            self._agents.append(f"ghost_{i}")
-        self._core = PacmanCore(agents=self._agents)
+            self._ghosts.append(f"ghost_{i}")
+        self._core = PacmanCore(player=self._player, ghosts=self._ghosts)
+
+    def _valid_agent(self, agent: str) -> bool:
+        if agent == self._player or agent in self._ghosts:
+            return True
+        return False
 
     def observation_space(self, agent: str):
-        if agent not in self._agents:
+        if not self._valid_agent(agent):
             raise ValueError("`agent` is not recognized.")
         return Box(
             low=0.0,
@@ -36,16 +42,12 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.float32]], int]):
         )
 
     def action_space(self, agent: str):
-        if agent not in self._agents:
+        if not self._valid_agent(agent):
             raise ValueError("`agent` is not recognized.")
         return Discrete(5)
 
     def _get_observation(self) -> dict[str, np.ndarray[Any, np.dtype[np.float32]]]:
         observation: dict[str, np.ndarray[Any, np.dtype[np.float32]]] = {}
-        for agent in self._agents:
-            observation[agent] = np.zeros(
-                (self._agent_sight_limit, self._agent_sight_limit, 5), dtype=np.float32
-            )
         return observation
 
     def reset(
@@ -62,8 +64,8 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.float32]], int]):
         dict[str, bool],
         dict[str, dict[Any, Any]],
     ]:
-        rewards: dict[str, float] = {agent: 0.0 for agent in self._agents}
-        t: dict[str, bool] = {agent: False for agent in self._agents}
+        rewards: dict[str, float] = {}
+        t: dict[str, bool] = {}
         return self._get_observation(), rewards, t, t, {}
 
     def render(self):

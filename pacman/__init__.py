@@ -1,2 +1,2 @@
-from env import PacmanEnv
-from core import PacmanCore
+from .env import PacmanEnv
+from .core import PacmanCore

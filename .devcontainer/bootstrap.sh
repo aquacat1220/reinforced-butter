@@ -5,3 +5,5 @@
 # Ex. Installing a local python module with `pip install .`.
 
 echo "Bootstrapping the container!"
+
+pip install -r ./requirements.txt
