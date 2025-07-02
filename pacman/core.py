@@ -5,53 +5,53 @@ from typing import Any
 # The upper four bits are bit flags that mark if a player/power/dot/wall is present at that tile.
 # This is possible because there can be at max one player/power/dot/wall on a single tile.
 
-NONE = np.int8(0b00000000)
-WALL = np.int8(0b00010000)
-DOT = np.int8(0b00100000)
-POWER = np.int8(0b01000000)
-PLAYER = np.int8(0b10000000)
+NONE = np.uint8(0b00000000)
+WALL = np.uint8(0b00010000)
+DOT = np.uint8(0b00100000)
+POWER = np.uint8(0b01000000)
+PLAYER = np.uint8(0b10000000)
 
 # However (to stop ghosts from being stuck together), there can be more than one ghost on a single tile.
 # Thus we use the remaining 4 bits to hold the number of ghosts on that tile.
 
-GHOST = np.int8(0b00000001)
-GHOST_MASK = np.int8(0b11110000)
+GHOST = np.uint8(0b00001111)
+ONE_GHOST = np.uint8(0b00000001)
 
-
-# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
+# fmt: off
+# Disable formatting, so that `DOT ,` doesn't get formatted to `DOT,`.
+# TEMPLATE: np.ndarray[Any, np.dtype[np.uint8]] = np.array(
 #     [
 #         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-#         [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, DOT, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL],
-#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL, WALL, WALL, WALL, WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
-#         [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
-#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
-#         [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, DOT, DOT, WALL],
+#         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+#         [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
+#         [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
+#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL, WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+#         [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
+#         [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+#         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
 #         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
 #     ]
 # )
 
-TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
+TEMPLATE: np.ndarray[Any, np.dtype[np.uint8]] = np.array(
     [
         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT],
-        [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT],
-        [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT],
-        [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL],
-        [WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL, WALL, WALL, WALL],
+        [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT ],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
+        [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL],
+        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL],
     ]
 )
-
-DOTS_IN_TEMPLATE = np.count_nonzero(TEMPLATE & 8)
+# fmt: on
 
 HEIGHT = len(TEMPLATE)
 WIDTH = len(TEMPLATE[0])
@@ -81,14 +81,14 @@ class PacmanCore:
             ghost: None for ghost in ghosts
         }
         self._num_power = num_power
-        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
+        self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
         self.score: int = 0
         self.player_power_remaining = 0
         self.terminated: bool = True
-        self._remaining_dots = np.count_nonzero(self.map & 8)
+        self._remaining_dots = np.count_nonzero(self.map & DOT)
         self.reset()
 
-    def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
+    def _get_random(self, filter: np.uint8 = WALL) -> tuple[int, int]:
         while True:
             h = self._rng.integers(0, HEIGHT, dtype=int)
             w = self._rng.integers(0, WIDTH, dtype=int)
@@ -133,7 +133,7 @@ class PacmanCore:
         return False
 
     def reset(self):
-        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
+        self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
         self.score: int = 0
         self.player_power_remaining = 0
         self.terminated: bool = False
@@ -156,7 +156,7 @@ class PacmanCore:
                 POWER | DOT
             )  # Powers are also always spawned on dots. Remove the dot.
 
-        self._remaining_dots = np.count_nonzero(self.map & 8)
+        self._remaining_dots = np.count_nonzero(self.map & DOT)
 
     def perform_action(self, agent: str, action: int):
         if self.terminated:

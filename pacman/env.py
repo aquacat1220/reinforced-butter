@@ -9,7 +9,7 @@ from .core import WALL, PLAYER, GHOST, DOT, POWER
 
 
 class PacmanEnv(
-    ParallelEnv[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], int]
+    ParallelEnv[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]], int]
 ):
     metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
 
@@ -54,7 +54,7 @@ class PacmanEnv(
 
     def _get_observation(
         self,
-    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]]:
+    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]]:
         map = self._core.map
         full_observation = np.stack(
             [
@@ -68,7 +68,7 @@ class PacmanEnv(
         )
 
         observation: dict[
-            str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+            str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
         ] = {}
         observation[self.player] = (full_observation, self._core.player[self.player])  # type: ignore
         for ghost in self.ghosts:
@@ -78,7 +78,7 @@ class PacmanEnv(
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]],
         dict[Any, Any],
     ]:
         self._core.reset()
@@ -86,7 +86,7 @@ class PacmanEnv(
         return self._get_observation(), {}
 
     def step(self, actions: dict[str, int]) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]],
         dict[str, float],
         dict[str, bool],
         dict[str, bool],
@@ -120,7 +120,7 @@ class PacmanEnv(
         assert self._render_mode == "ansi"
         for h in range(HEIGHT):
             for w in range(WIDTH):
-                tile: np.int8 = self._core.map[h, w]
+                tile: np.uint8 = self._core.map[h, w]
                 if tile & WALL:
                     print(Fore.WHITE + "██", end="")
                 elif tile & PLAYER:

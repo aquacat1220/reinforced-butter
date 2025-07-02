@@ -9,14 +9,14 @@ from . import STAY, UP, DOWN, LEFT, RIGHT
 class GhostAgentBase(ABC):
     @abstractmethod
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
     ) -> int:
         return STAY
 
     @classmethod
     def find_path(
         cls,
-        walls: np.ndarray[Any, np.dtype[np.int8]],
+        walls: np.ndarray[Any, np.dtype[np.uint8]],
         start: tuple[int, int],
         end: tuple[int, int],
     ) -> list[int]:
@@ -52,7 +52,7 @@ class GhostAgentBase(ABC):
 
 class PursueGhost(GhostAgentBase):
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
     ) -> int:
         walls = observation[0][0]
         player = observation[0][1]
@@ -69,19 +69,23 @@ class PursueGhost(GhostAgentBase):
 
 class PatrolPowerGhost(GhostAgentBase):
     def __init__(self):
-        self._target_power: int = 0
+        self._target_power_index: int = 0
 
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
     ) -> int:
         walls = observation[0][0]
         powers = observation[0][4]
         my_pos = observation[1]
         power_poss: list[tuple[int, int]] = np.argwhere(powers)  # type: ignore
-        target_power_pos = power_poss[self._target_power % len(power_poss)]
+        if len(power_poss) == 0:
+            # If no more powers are left, just stay here.
+            return STAY
+        target_power_pos = power_poss[self._target_power_index % len(power_poss)]
         if np.all(my_pos == target_power_pos):
-            self._target_power += 1
-            target_power_pos = power_poss[self._target_power % len(power_poss)]
+            # If we arrived at the target power, increment the target power index.
+            self._target_power_index += 1
+            target_power_pos = power_poss[self._target_power_index % len(power_poss)]
         actions = GhostAgentBase.find_path(walls, my_pos, target_power_pos)
         if len(actions) == 0:
             return STAY
