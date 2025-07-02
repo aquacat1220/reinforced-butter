@@ -9,7 +9,8 @@ from . import STAY, UP, DOWN, LEFT, RIGHT
 class GhostAgentBase(ABC):
     @abstractmethod
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
     ) -> int:
         return STAY
 
@@ -52,7 +53,8 @@ class GhostAgentBase(ABC):
 
 class PursueGhost(GhostAgentBase):
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
     ) -> int:
         walls = observation[0][0]
         player = observation[0][3]
@@ -72,7 +74,8 @@ class PatrolPowerGhost(GhostAgentBase):
         self._target_power_index: int = 0
 
     def get_action(
-        self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
     ) -> int:
         walls = observation[0][0]
         powers = observation[0][2]
