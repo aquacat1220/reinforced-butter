@@ -1,8 +1,15 @@
-from pacman import PacmanEnv, STAY, UP, DOWN, LEFT, RIGHT
+from pacman import PacmanEnv, STAY, UP, DOWN, LEFT, RIGHT, PursueGhost
 from rich import print
 
 env = PacmanEnv()
-print(env.reset())
+
+observations, _ = env.reset()
+dones: dict[str, bool] = {ghost: False for ghost in env.ghosts}
+dones[env.player] = False
+
+ghosts = {ghost_name: PursueGhost() for ghost_name in env.ghosts}
+
+print(observations)
 while True:
     if env.is_terminated():
         print("Environment terminated.")
@@ -20,5 +27,16 @@ while True:
         action = RIGHT
     else:
         continue
-    print(env.step({"player": action}))
+    actions: dict[str, int] = {
+        ghost_name: ghost.get_action(observations[ghost_name])
+        for (ghost_name, ghost) in ghosts.items()
+        if not dones[ghost_name]
+    }
+    actions[env.player] = action
+    observations, _, terminateds, truncateds, _ = env.step(actions)
+    dones = {
+        agent: terminateds[agent] or truncateds[agent] or dones[agent]
+        for agent in terminateds
+    }
+    print(observations)
     print(env.render())

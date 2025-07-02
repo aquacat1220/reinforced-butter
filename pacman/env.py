@@ -1,14 +1,16 @@
 from pettingzoo import ParallelEnv  # type: ignore
-from gymnasium.spaces import MultiBinary, Discrete
+from gymnasium.spaces import MultiBinary, Discrete, Tuple
 import numpy as np
 from typing import Any
-from colorama import Fore, Back, Style
+from colorama import Fore
 from .core import PacmanCore
 from .core import HEIGHT, WIDTH
 from .core import WALL, PLAYER, GHOST, DOT, POWER
 
 
-class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
+class PacmanEnv(
+    ParallelEnv[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], int]
+):
     metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
 
     def __init__(
@@ -23,29 +25,36 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
             )
         self._render_mode = render_mode
         self._player_sight_limit = agent_sight_limit
-        self._player: str = "player"
-        self._ghosts: list[str] = []
+        self.player: str = "player"
+        self.ghosts: list[str] = []
         for i in range(ghost_count):
-            self._ghosts.append(f"ghost_{i}")
-        self._core = PacmanCore(player=self._player, ghosts=self._ghosts)
+            self.ghosts.append(f"ghost_{i}")
+        self._core = PacmanCore(player=self.player, ghosts=self.ghosts)
         self._last_score = 0
 
     def _valid_agent(self, agent: str) -> bool:
-        if agent == self._player or agent in self._ghosts:
+        if agent == self.player or agent in self.ghosts:
             return True
         return False
 
     def observation_space(self, agent: str):
         if not self._valid_agent(agent):
             raise ValueError("`agent` is not recognized.")
-        return MultiBinary((HEIGHT, WIDTH, 5))
+        return Tuple(
+            (
+                MultiBinary((HEIGHT, WIDTH, 5)),
+                Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
+            )
+        )
 
     def action_space(self, agent: str):
         if not self._valid_agent(agent):
             raise ValueError("`agent` is not recognized.")
         return Discrete(5)
 
-    def _get_observation(self) -> dict[str, np.ndarray[Any, np.dtype[np.int8]]]:
+    def _get_observation(
+        self,
+    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]]:
         map = self._core.map
         full_observation = np.stack(
             [
@@ -55,18 +64,23 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
                 (map & DOT) != 0,
                 (map & POWER) != 0,
             ],
-            axis=-1,
+            axis=0,
         )
 
-        observation: dict[str, np.ndarray[Any, np.dtype[np.int8]]] = {}
-        observation[self._player] = full_observation
-        for ghost in self._ghosts:
-            observation[ghost] = full_observation
+        observation: dict[
+            str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+        ] = {}
+        observation[self.player] = (full_observation, self._core.player[self.player])  # type: ignore
+        for ghost in self.ghosts:
+            observation[ghost] = (full_observation, self._core.ghosts[ghost])  # type: ignore
         return observation
 
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
-    ) -> tuple[dict[str, np.ndarray[Any, np.dtype[np.int8]]], dict[Any, Any]]:
+    ) -> tuple[
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]],
+        dict[Any, Any],
+    ]:
         self._core.reset()
         self._last_score = 0
         return self._get_observation(), {}
@@ -74,16 +88,16 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
     def step(
         self, actions: dict[str, int]
     ) -> tuple[
-        dict[str, np.ndarray[Any, np.dtype[np.int8]]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]],
         dict[str, float],
         dict[str, bool],
         dict[str, bool],
         dict[str, dict[Any, Any]],
     ]:
-        if self._player in actions:
-            action = actions[self._player]
-            self._core.perform_action(self._player, action)
-        for ghost in self._ghosts:
+        if self.player in actions:
+            action = actions[self.player]
+            self._core.perform_action(self.player, action)
+        for ghost in self.ghosts:
             if ghost in actions:
                 action = actions[ghost]
                 self._core.perform_action(ghost, action)
@@ -91,15 +105,15 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
         score_delta = self._core.score - self._last_score
         self._last_score = self._core.score
 
-        rewards: dict[str, float] = {ghost: -score_delta for ghost in self._ghosts}
-        rewards[self._player] = score_delta
+        rewards: dict[str, float] = {ghost: -score_delta for ghost in self.ghosts}
+        rewards[self.player] = score_delta
 
         t: dict[str, bool] = {
             ghost: (self._core.ghosts[ghost] is None) or (self._core.terminated)
-            for ghost in self._ghosts
+            for ghost in self.ghosts
         }
-        t[self._player] = (
-            self._core.player[self._player] is None
+        t[self.player] = (
+            self._core.player[self.player] is None
         ) or self._core.terminated
 
         return self._get_observation(), rewards, t, t, {}
