@@ -59,10 +59,11 @@ class PacmanEnv(
         full_observation = np.stack(
             [
                 (map & WALL) != 0,
-                (map & PLAYER) != 0,
-                (map & GHOST) != 0,
                 (map & DOT) != 0,
                 (map & POWER) != 0,
+                (map & PLAYER) != 0,
+                # The ghost map contains the number of ghosts on that tile.
+                (map & GHOST),
             ],
             axis=0,
         )

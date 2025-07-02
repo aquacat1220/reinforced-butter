@@ -147,7 +147,8 @@ class PacmanCore:
 
         for ghost in self.ghosts:
             ghost_pos = self._get_random(WALL | PLAYER | GHOST)
-            self.map[ghost_pos] ^= GHOST
+            # Unlike other entities, that can be added by XOR-ing the flag, we need to ADD `ONE_GHOST`, since ghosts are stored as 4 bit uints.
+            self.map[ghost_pos] += ONE_GHOST
             self.ghosts[ghost] = ghost_pos
 
         for _ in range(self._num_power):
@@ -190,7 +191,8 @@ class PacmanCore:
 
         if self.map[new_pos] & GHOST:
             # `action` moves ghost into another ghost.
-            return
+            # We allow such action to make sure ghosts don't get stuck together.
+            pass
 
         if self.map[new_pos] & PLAYER:
             # If the new tile has a player, remove player from map, update `self._player`, add lose score, and terminate game.
@@ -204,8 +206,8 @@ class PacmanCore:
             self.terminated = True
 
         # And move the ghost.
-        self.map[ghost_pos] ^= GHOST
-        self.map[new_pos] ^= GHOST
+        self.map[ghost_pos] -= ONE_GHOST
+        self.map[new_pos] += ONE_GHOST
         self.ghosts[ghost] = new_pos
         return
 
@@ -255,13 +257,13 @@ class PacmanCore:
         if self.map[new_pos] & GHOST:
             # If the new tile has a ghost, check power.
             if self.player_power_remaining > 0:
-                # If we have power, remove ghost from map, update `self._ghosts`, and add to score.
-                self.map[new_pos] ^= GHOST
+                # If we have power, remove all ghosts present in this tile, update `self._ghosts`, and add to score.
+                # AND-ing the tile with `~GHOST` (0b11110000) removes all ghosts from the tile.
+                self.map[new_pos] &= ~GHOST
                 for ghost in self.ghosts:
                     if self.ghosts[ghost] == new_pos:
                         self.ghosts[ghost] = None
-                        break
-                self.score += GHOST_KILL_SCORE
+                        self.score += GHOST_KILL_SCORE
                 # If that was the last ghost, add win score, and terminate game.
                 was_last_ghost = True
                 for ghost_pos in self.ghosts.values():

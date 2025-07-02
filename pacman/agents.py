@@ -55,7 +55,7 @@ class PursueGhost(GhostAgentBase):
         self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
     ) -> int:
         walls = observation[0][0]
-        player = observation[0][1]
+        player = observation[0][3]
         # Follow the first player to be found.
         # The environment contains only one player anyways, so no need to worry.
         player_pos: tuple[int, int] = np.argwhere(player)[0]
@@ -75,7 +75,7 @@ class PatrolPowerGhost(GhostAgentBase):
         self, observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
     ) -> int:
         walls = observation[0][0]
-        powers = observation[0][4]
+        powers = observation[0][2]
         my_pos = observation[1]
         power_poss: list[tuple[int, int]] = np.argwhere(powers)  # type: ignore
         if len(power_poss) == 0:
