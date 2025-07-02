@@ -113,7 +113,7 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
                     print(Fore.WHITE + "██", end="")
                 elif tile & PLAYER:
                     if self._core.player_power_remaining > 0:
-                        print(Fore.RED + "🭪 ", end="")
+                        print(Fore.LIGHTRED_EX + "🭪 ", end="")
                     else:
                         print(Fore.YELLOW + "🭪 ", end="")
                 elif tile & GHOST:
