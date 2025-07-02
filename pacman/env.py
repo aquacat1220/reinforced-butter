@@ -98,7 +98,9 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
             ghost: (self._core.ghosts[ghost] is None) or (self._core.terminated)
             for ghost in self._ghosts
         }
-        t[self._player] = self._core.terminated
+        t[self._player] = (
+            self._core.player[self._player] is None
+        ) or self._core.terminated
 
         return self._get_observation(), rewards, t, t, {}
 

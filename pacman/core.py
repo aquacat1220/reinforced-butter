@@ -252,6 +252,15 @@ class PacmanCore:
                         self.ghosts[ghost] = None
                         break
                 self.score += GHOST_KILL_SCORE
+                # If that was the last ghost, add win score, and terminate game.
+                was_last_ghost = True
+                for ghost_pos in self.ghosts.values():
+                    if ghost_pos is not None:
+                        was_last_ghost = False
+                        break
+                if was_last_ghost:
+                    self.score += WIN_SCORE
+                    self.terminated = True
             else:
                 # If we don't have power, remove player from map, update `self._player`, add lose score, and terminate game.
                 self.map[player_pos] ^= PLAYER
