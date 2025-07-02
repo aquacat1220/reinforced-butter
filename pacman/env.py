@@ -2,7 +2,7 @@ from pettingzoo import ParallelEnv  # type: ignore
 from gymnasium.spaces import MultiBinary, Discrete
 import numpy as np
 from typing import Any
-from colorama import Fore, Style
+from colorama import Fore, Back, Style
 from .core import PacmanCore
 from .core import HEIGHT, WIDTH
 from .core import WALL, PLAYER, GHOST, DOT, POWER
@@ -108,9 +108,12 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
             for w in range(WIDTH):
                 tile: np.int8 = self._core.map[h, w]
                 if tile & WALL:
-                    print(Fore.WHITE + "██" + Style.RESET_ALL, end="")
+                    print(Fore.WHITE + "██", end="")
                 elif tile & PLAYER:
-                    print(Fore.YELLOW + "🭪", end="")
+                    if self._core.player_power_remaining > 0:
+                        print(Fore.RED + "🭪 ", end="")
+                    else:
+                        print(Fore.YELLOW + "🭪 ", end="")
                 elif tile & GHOST:
                     print(Fore.BLUE + "ᙁ ", end="")
                 elif tile & DOT:

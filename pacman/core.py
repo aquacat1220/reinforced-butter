@@ -73,7 +73,7 @@ class PacmanCore:
         self._num_power = num_power
         self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
         self.score: int = 0
-        self._player_power_remaining = 0
+        self.player_power_remaining = 0
         self.terminated: bool = True
         self._remaining_dots = np.count_nonzero(self.map & 8)
         self.reset()
@@ -125,7 +125,7 @@ class PacmanCore:
     def reset(self):
         self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
         self.score: int = 0
-        self._player_power_remaining = 0
+        self.player_power_remaining = 0
         self.terminated: bool = False
 
         for player in self.player:
@@ -163,7 +163,7 @@ class PacmanCore:
         if ghost_pos is None:
             return
 
-        if self._player_power_remaining > 0:
+        if self.player_power_remaining > 0:
             # Ghosts cannot move during power.
             return
 
@@ -204,8 +204,8 @@ class PacmanCore:
         if player_pos is None:
             return
 
-        if self._player_power_remaining > 0:
-            self._player_power_remaining -= 1
+        if self.player_power_remaining > 0:
+            self.player_power_remaining -= 1
 
         if action == STAY:
             return
@@ -236,7 +236,7 @@ class PacmanCore:
             # If the new tile has a power, consume it, add to score, and refresh power.
             self.map[new_pos] ^= POWER
             self.score += POWER_SCORE
-            self._player_power_remaining = POWER_DURATION
+            self.player_power_remaining = POWER_DURATION
 
         if self.map[new_pos] & PLAYER:
             # The new tile cannot have a player, since there is always a single player.
@@ -244,7 +244,7 @@ class PacmanCore:
 
         if self.map[new_pos] & GHOST:
             # If the new tile has a ghost, check power.
-            if self._player_power_remaining > 0:
+            if self.player_power_remaining > 0:
                 # If we have power, remove ghost from map, update `self._ghosts`, and add to score.
                 self.map[new_pos] ^= GHOST
                 for ghost in self.ghosts:

@@ -8,15 +8,15 @@ while True:
         print("Environment terminated.")
         break
     action = input("Select action: ")
-    if action == "S":
+    if action == "s":
         action = STAY
-    elif action == "U":
+    elif action == "u":
         action = UP
-    elif action == "D":
+    elif action == "d":
         action = DOWN
-    elif action == "L":
+    elif action == "l":
         action = LEFT
-    elif action == "R":
+    elif action == "r":
         action = RIGHT
     else:
         continue
