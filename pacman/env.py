@@ -5,11 +5,14 @@ from typing import Any
 from colorama import Fore
 from .core import PacmanCore
 from .core import HEIGHT, WIDTH
-from .core import WALL, PLAYER, GHOST, DOT, POWER
+from .core import POWER_DURATION
+from .core import WALL, DOT, POWER, PLAYER, GHOST, ONE_GHOST
 
 
 class PacmanEnv(
-    ParallelEnv[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]], int]
+    ParallelEnv[
+        str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int], int
+    ]
 ):
     metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
 
@@ -44,6 +47,7 @@ class PacmanEnv(
             (
                 MultiBinary((HEIGHT, WIDTH, 5)),
                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
+                Discrete(POWER_DURATION + 1),
             )
         )
 
@@ -54,7 +58,7 @@ class PacmanEnv(
 
     def _get_observation(
         self,
-    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]]:
+    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]]:
         map = self._core.map
         full_observation = np.stack(
             [
@@ -69,17 +73,17 @@ class PacmanEnv(
         )
 
         observation: dict[
-            str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]
+            str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]
         ] = {}
-        observation[self.player] = (full_observation, self._core.player[self.player])  # type: ignore
+        observation[self.player] = (full_observation, self._core.player[self.player], self._core.player_power_remaining)  # type: ignore
         for ghost in self.ghosts:
-            observation[ghost] = (full_observation, self._core.ghosts[ghost])  # type: ignore
+            observation[ghost] = (full_observation, self._core.ghosts[ghost], self._core.player_power_remaining)  # type: ignore
         return observation
 
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
         dict[Any, Any],
     ]:
         self._core.reset()
@@ -87,7 +91,7 @@ class PacmanEnv(
         return self._get_observation(), {}
 
     def step(self, actions: dict[str, int]) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int]]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
         dict[str, float],
         dict[str, bool],
         dict[str, bool],
@@ -119,13 +123,29 @@ class PacmanEnv(
 
     def render(self):
         assert self._render_mode == "ansi"
+        PacmanEnv.render_observation(self._get_observation()[self.player])
+
+    @classmethod
+    def render_observation(
+        cls,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+    ):
+        tiles = observation[0]
+        player_power_remaining = observation[2]
+        reconstructed_map = (
+            tiles[0] * WALL
+            + tiles[1] * DOT
+            + tiles[2] * POWER
+            + tiles[3] * PLAYER
+            + tiles[4] * ONE_GHOST
+        )
         for h in range(HEIGHT):
             for w in range(WIDTH):
-                tile: np.uint8 = self._core.map[h, w]
+                tile: np.uint8 = reconstructed_map[h, w]
                 if tile & WALL:
                     print(Fore.WHITE + "██", end="")
                 elif tile & PLAYER:
-                    if self._core.player_power_remaining > 0:
+                    if player_power_remaining > 0:
                         print(Fore.LIGHTRED_EX + "🭪 ", end="")
                     else:
                         print(Fore.YELLOW + "🭪 ", end="")
