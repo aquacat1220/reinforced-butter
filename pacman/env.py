@@ -85,9 +85,7 @@ class PacmanEnv(
         self._last_score = 0
         return self._get_observation(), {}
 
-    def step(
-        self, actions: dict[str, int]
-    ) -> tuple[
+    def step(self, actions: dict[str, int]) -> tuple[
         dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]],
         dict[str, float],
         dict[str, bool],

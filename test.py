@@ -1,4 +1,4 @@
-from pacman import PacmanEnv, STAY, UP, DOWN, LEFT, RIGHT, PursueGhost
+from pacman import PacmanEnv, STAY, UP, DOWN, LEFT, RIGHT, PursueGhost, PatrolPowerGhost
 from rich import print
 
 env = PacmanEnv()
@@ -7,7 +7,7 @@ observations, _ = env.reset()
 dones: dict[str, bool] = {ghost: False for ghost in env.ghosts}
 dones[env.player] = False
 
-ghosts = {ghost_name: PursueGhost() for ghost_name in env.ghosts}
+ghosts = {ghost_name: PatrolPowerGhost() for ghost_name in env.ghosts}
 
 print(observations)
 while True:

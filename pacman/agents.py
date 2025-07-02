@@ -65,3 +65,24 @@ class PursueGhost(GhostAgentBase):
             len(actions) > 0
         )  # Since we always have a single player in the game, and we must haven't catch it yet, we can always find a path to it.
         return actions[0]
+
+
+class PatrolPowerGhost(GhostAgentBase):
+    def __init__(self):
+        self._target_power: int = 0
+
+    def get_action(
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+    ) -> int:
+        walls = observation[0][0]
+        powers = observation[0][4]
+        my_pos = observation[1]
+        power_poss: list[tuple[int, int]] = np.argwhere(powers)  # type: ignore
+        target_power_pos = power_poss[self._target_power % len(power_poss)]
+        if np.all(my_pos == target_power_pos):
+            self._target_power += 1
+            target_power_pos = power_poss[self._target_power % len(power_poss)]
+        actions = GhostAgentBase.find_path(walls, my_pos, target_power_pos)
+        if len(actions) == 0:
+            return STAY
+        return actions[0]

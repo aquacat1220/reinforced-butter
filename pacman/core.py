@@ -1,43 +1,53 @@
 import numpy as np
 from typing import Any
 
-NONE = np.int8(0)
-WALL = np.int8(1)
-PLAYER = np.int8(2)
-GHOST = np.int8(4)
-DOT = np.int8(8)
-POWER = np.int8(16)
+# Each tile is represented as a single 8bit integer.
+# The upper four bits are bit flags that mark if a player/power/dot/wall is present at that tile.
+# This is possible because there can be at max one player/power/dot/wall on a single tile.
+
+NONE = np.int8(0b00000000)
+WALL = np.int8(0b00010000)
+DOT = np.int8(0b00100000)
+POWER = np.int8(0b01000000)
+PLAYER = np.int8(0b10000000)
+
+# However (to stop ghosts from being stuck together), there can be more than one ghost on a single tile.
+# Thus we use the remaining 4 bits to hold the number of ghosts on that tile.
+
+GHOST = np.int8(0b00000001)
+GHOST_MASK = np.int8(0b11110000)
+
 
 # TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
 #     [
-#         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-#         [1, 8, 8, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1, 8, 8, 8, 1],
-#         [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1, 1, 1, 8, 1, 8, 1, 8, 1],
-#         [1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1],
-#         [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1, 1, 1, 8, 1, 8, 1, 8, 1],
-#         [1, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1, 8, 1],
-#         [1, 8, 1, 1, 1, 1, 8, 1, 1, 1, 1, 1, 8, 1, 1, 1, 1, 8, 1],
-#         [1, 8, 8, 8, 8, 8, 8, 1, 1, 1, 1, 1, 8, 8, 8, 8, 8, 8, 1],
-#         [1, 8, 1, 1, 1, 1, 8, 1, 1, 1, 1, 1, 8, 1, 1, 1, 1, 8, 1],
-#         [1, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1, 8, 1],
-#         [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1, 1, 1, 8, 1, 8, 1, 8, 1],
-#         [1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1],
-#         [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1, 1, 1, 8, 1, 8, 1, 8, 1],
-#         [1, 8, 8, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 1, 8, 8, 8, 1],
-#         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+#         [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, DOT, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL],
+#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL, WALL, WALL, WALL, WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
+#         [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL],
+#         [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT, WALL, DOT, WALL, DOT, WALL],
+#         [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, WALL, DOT, DOT, DOT, WALL],
+#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
 #     ]
 # )
 
 TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
     [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [1, 8, 8, 8, 1, 8, 8, 8, 8, 8, 8],
-        [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1],
-        [1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
-        [1, 8, 1, 8, 1, 8, 1, 1, 1, 1, 1],
-        [1, 8, 1, 8, 8, 8, 8, 8, 8, 8, 8],
-        [1, 8, 1, 1, 1, 1, 8, 1, 1, 1, 1],
-        [1, 8, 8, 8, 8, 8, 8, 1, 1, 1, 1],
+        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT, DOT, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT],
+        [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT],
+        [WALL, DOT, WALL, DOT, WALL, DOT, WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT, WALL, DOT, DOT, DOT, DOT, DOT, DOT, DOT, DOT],
+        [WALL, DOT, WALL, WALL, WALL, WALL, DOT, WALL, WALL, WALL, WALL],
+        [WALL, DOT, DOT, DOT, DOT, DOT, DOT, WALL, WALL, WALL, WALL],
     ]
 )
 
