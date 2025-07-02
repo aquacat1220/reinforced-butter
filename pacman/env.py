@@ -2,17 +2,18 @@ from pettingzoo import ParallelEnv  # type: ignore
 from gymnasium.spaces import MultiBinary, Discrete
 import numpy as np
 from typing import Any
+from colorama import Fore, Style
 from .core import PacmanCore
 from .core import HEIGHT, WIDTH
 from .core import WALL, PLAYER, GHOST, DOT, POWER
 
 
 class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
-    metadata = {"name": "pacman_env_v0", "render_modes": ["human"]}
+    metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
 
     def __init__(
         self,
-        render_mode: str = "human",
+        render_mode: str = "ansi",
         agent_sight_limit: int = 5,
         ghost_count: int = 2,
     ):
@@ -102,4 +103,23 @@ class PacmanEnv(ParallelEnv[str, np.ndarray[Any, np.dtype[np.int8]], int]):
         return self._get_observation(), rewards, t, t, {}
 
     def render(self):
-        pass
+        assert self._render_mode == "ansi"
+        for h in range(HEIGHT):
+            for w in range(WIDTH):
+                tile: np.int8 = self._core.map[h, w]
+                if tile & WALL:
+                    print(Fore.WHITE + "██" + Style.RESET_ALL, end="")
+                elif tile & PLAYER:
+                    print(Fore.YELLOW + "🭪", end="")
+                elif tile & GHOST:
+                    print(Fore.BLUE + "ᙁ ", end="")
+                elif tile & DOT:
+                    print(Fore.YELLOW + "○ ", end="")
+                elif tile & POWER:
+                    print(Fore.YELLOW + "● ", end="")
+                else:
+                    print("  ", end="")
+            print()
+
+    def is_terminated(self) -> bool:
+        return self._core.terminated
