@@ -1,4 +1,4 @@
-from gymnasium import Env
+from gymnasium import Env, ObservationWrapper
 import numpy as np
 from typing import Any, Callable
 from gymnasium.spaces import MultiBinary, Tuple, Discrete
@@ -83,3 +83,17 @@ class GymWrapper(
 
     def render(self):
         self.env.render()
+
+
+class StripWrapper(
+    ObservationWrapper[
+        np.ndarray[Any, np.dtype[np.uint8]],
+        np.int64,
+        tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+    ]
+):
+    def observation(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+    ) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        return observation[0]

@@ -8,12 +8,14 @@ from pacman import (
     PursueGhost,
     PatrolPowerGhost,
     GymWrapper,
+    StripWrapper,
 )
 from rich import print
 import numpy as np
 
 env = PacmanEnv()
 env = GymWrapper(env, lambda _: PatrolPowerGhost())
+env = StripWrapper(env)
 
 # observation, _ = env.reset()
 observation, _ = env.reset(seed=1220)
