@@ -12,9 +12,10 @@ class GymWrapper(
 ):
     def __init__(self, env: PacmanEnv, ghost_builder: Callable[[str], GhostAgentBase]):
         self.env = env
+        self.metadata = env.metadata
         self.observation_space = Tuple(
             (
-                MultiBinary((HEIGHT, WIDTH, 5)),
+                MultiBinary((5, HEIGHT, WIDTH)),
                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
                 Discrete(POWER_DURATION + 1),
             )
@@ -98,8 +99,8 @@ class StripWrapper(
             tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64
         ],
     ):
-        self.env = env
-        self.observation_space = MultiBinary((HEIGHT, WIDTH, 5))
+        super().__init__(env)
+        self.observation_space = MultiBinary((5, HEIGHT, WIDTH))
 
     def observation(
         self,

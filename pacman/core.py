@@ -9,7 +9,8 @@ NONE = np.int8(0b00000000)
 WALL = np.int8(0b00010000)
 DOT = np.int8(0b00100000)
 POWER = np.int8(0b01000000)
-PLAYER = np.int8(0b10000000)
+PLAYER = np.int8(-0b10000000)
+# PLAYER = np.int8(0b10000000)
 
 # However (to stop ghosts from being stuck together), there can be more than one ghost on a single tile.
 # Thus we use the remaining 4 bits to hold the number of ghosts on that tile.

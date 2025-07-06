@@ -46,7 +46,7 @@ class PacmanEnv(
             raise ValueError("`agent` is not recognized.")
         return Tuple(
             (
-                MultiBinary((HEIGHT, WIDTH, 5)),
+                MultiBinary((5, HEIGHT, WIDTH)),
                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
                 Discrete(POWER_DURATION + 1),
             )
