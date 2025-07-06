@@ -14,7 +14,7 @@ class PacmanEnv(
         str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], int
     ]
 ):
-    metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
+    metadata = {"name": "pacman_env_v0", "render_modes": ["ansi", "rgb_array"]}
 
     def __init__(
         self,
@@ -128,15 +128,23 @@ class PacmanEnv(
 
         return self._get_observation(), rewards, t, t, self._get_empty_infos()
 
-    def render(self):
-        assert self._render_mode == "ansi"
-        PacmanEnv.render_observation(self._get_observation()[self.player])
+    def render(self) -> str | np.ndarray[Any, np.dtype[np.uint8]]:
+        if self._render_mode == "ansi":
+            return PacmanEnv.render_observation_ansi(
+                self._get_observation()[self.player]
+            )
+        elif self._render_mode == "rgb_array":
+            return PacmanEnv.render_observation_rgb(
+                self._get_observation()[self.player]
+            )
+        else:
+            raise Exception("Unreachable")
 
     @classmethod
-    def render_observation(
+    def render_observation_ansi(
         cls,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
-    ):
+    ) -> str:
         tiles = observation[0]
         player_power_remaining = observation[2]
         reconstructed_map = (
@@ -146,22 +154,74 @@ class PacmanEnv(
             + tiles[3] * PLAYER
             + tiles[4] * ONE_GHOST
         )
+        text: str = ""
         for h in range(HEIGHT):
             for w in range(WIDTH):
                 tile: np.int8 = reconstructed_map[h, w]
                 if tile & WALL:
-                    print(Fore.WHITE + "██", end="")
+                    text += Fore.WHITE + "██"
                 elif tile & PLAYER:
                     if player_power_remaining > 0:
-                        print(Fore.LIGHTRED_EX + "🭪 ", end="")
+                        text += Fore.LIGHTRED_EX + "🭪 "
                     else:
-                        print(Fore.YELLOW + "🭪 ", end="")
+                        text += Fore.YELLOW + "🭪 "
                 elif tile & GHOST:
-                    print(Fore.BLUE + "ᙁ ", end="")
+                    text += Fore.BLUE + "ᙁ "
                 elif tile & DOT:
-                    print(Fore.YELLOW + "○ ", end="")
+                    text += Fore.YELLOW + "○ "
                 elif tile & POWER:
-                    print(Fore.YELLOW + "● ", end="")
+                    text += Fore.YELLOW + "● "
                 else:
-                    print("  ", end="")
-            print()
+                    text += "  "
+            text += "\n"
+        return text
+
+    @classmethod
+    def render_observation_rgb(
+        cls,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+    ) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        tiles = observation[0]
+        player_power_remaining = observation[2]
+        reconstructed_map = (
+            tiles[0] * WALL
+            + tiles[1] * DOT
+            + tiles[2] * POWER
+            + tiles[3] * PLAYER
+            + tiles[4] * ONE_GHOST
+        )
+        image = np.zeros(shape=(HEIGHT, WIDTH, 3, 3, 3), dtype=np.uint8)
+        for h in range(HEIGHT):
+            for w in range(WIDTH):
+                tile: np.int8 = reconstructed_map[h, w]
+                image_tile = np.zeros(shape=(3, 3, 3), dtype=np.uint8)
+                if tile & WALL:
+                    image_tile = image_tile + [255, 255, 255]
+                elif tile & PLAYER:
+                    if player_power_remaining > 0:
+                        color = [255, 100, 100]
+                    else:
+                        color = [255, 255, 0]
+                    image_tile = image_tile + color
+                    image_tile[1, 2] = [0, 0, 0]
+                elif tile & GHOST:
+                    color = [0, 0, 255]
+                    image_tile[0, 1] = color
+                    image_tile[1, 0] = color
+                    image_tile[1, 2] = color
+                    image_tile[2, 0] = color
+                    image_tile[2, 2] = color
+                elif tile & DOT:
+                    image_tile[1, 1] = [255, 255, 0]
+                elif tile & POWER:
+                    color = [255, 255, 0]
+                    image_tile[0, 1] = color
+                    image_tile[1, 0] = color
+                    image_tile[1, 2] = color
+                    image_tile[2, 1] = color
+                else:
+                    pass
+                image[h, w] = image_tile
+        image = image.transpose((0, 2, 1, 3, 4))
+        image = image.reshape((HEIGHT * 3, WIDTH * 3, 3))
+        return image

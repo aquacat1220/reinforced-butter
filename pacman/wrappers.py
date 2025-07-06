@@ -82,8 +82,8 @@ class GymWrapper(
             infos[self.env.player],
         )
 
-    def render(self):
-        self.env.render()
+    def render(self) -> str | np.ndarray[Any, np.dtype[np.uint8]]:
+        return self.env.render()
 
 
 class StripWrapper(

@@ -12,8 +12,9 @@ from pacman import (
 )
 from rich import print
 import numpy as np
+from PIL import Image
 
-env = PacmanEnv()
+env = PacmanEnv(render_mode="rgb_array")
 env = GymWrapper(env, lambda _: PatrolPowerGhost())
 env = StripWrapper(env)
 
@@ -22,7 +23,8 @@ observation, _ = env.reset(seed=1220)
 is_done: bool = False
 
 print(observation)
-print(env.render())
+image = Image.fromarray(env.render())  # type: ignore
+image.save("observation.png")
 while True:
     if is_done:
         print("Environment terminated.")
@@ -42,5 +44,6 @@ while True:
         continue
     observation, _, terminated, truncated, _ = env.step(np.int64(action))
     print(observation)
-    print(env.render())
+    image = Image.fromarray(env.render())  # type: ignore
+    image.save("observation.png")
     is_done = terminated or truncated
