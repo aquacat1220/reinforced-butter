@@ -20,38 +20,38 @@ ONE_GHOST = np.int8(0b00000001)
 
 # fmt: off
 # Disable formatting, so that `DOT ,` doesn't get formatted to `DOT,`.
-# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
-#     [
-#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-#         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
-#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
-#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
-#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
-#         [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
-#         [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
-#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL, WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL],
-#         [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
-#         [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
-#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
-#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
-#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
-#         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
-#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-#     ]
-# )
-
 TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
     [
-        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT ],
-        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
-        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
-        [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
-        [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL],
-        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL],
+        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+        [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+        [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
+        [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
+        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL, WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+        [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL],
+        [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , WALL],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+        [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL],
+        [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL, WALL, WALL, DOT , WALL, DOT , WALL, DOT , WALL],
+        [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
+        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
     ]
 )
+
+# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
+#     [
+#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+#         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT ],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
+#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
+#         [WALL, DOT , WALL, DOT , WALL, DOT , WALL, WALL, WALL, WALL, WALL],
+#         [WALL, DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT ],
+#         [WALL, DOT , WALL, WALL, WALL, WALL, DOT , WALL, WALL, WALL, WALL],
+#         [WALL, DOT , DOT , DOT , DOT , DOT , DOT , WALL, WALL, WALL, WALL],
+#     ]
+# )
 # fmt: on
 
 HEIGHT = len(TEMPLATE)

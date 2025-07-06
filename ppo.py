@@ -13,6 +13,7 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
+from typing import Any
 from pacman import PacmanEnv, GymWrapper, PursueGhost, StripWrapper
 
 
@@ -32,14 +33,16 @@ class Args:
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
-    capture_video: bool = False
+    capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    checkpoint: bool = True
+    """whether to store checkpoints"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
     env_id: str = "SimplePacman"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
-    total_timesteps: int = 500000
+    total_timesteps: int = 10000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -85,14 +88,20 @@ def make_env(env_id: str, idx: int, capture_video: bool, run_name: str):
     def thunk():
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
-            # env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-            env = PacmanEnv()
-            # `PacmanEnv` doesn't support RGB rendering, so ignore `capture_video`.
+            env = PacmanEnv(render_mode="rgb_array")
+            env = GymWrapper(env, lambda _: PursueGhost())
+            env = StripWrapper(env)
+            env = gym.wrappers.RecordVideo(
+                env,
+                f"videos/{run_name}",
+                episode_trigger=lambda id: id % 5000 == 0,
+                fps=1,
+            )
         else:
             # env = gym.make(env_id)
             env = PacmanEnv()
-        env = GymWrapper(env, lambda _: PursueGhost())
-        env = StripWrapper(env)
+            env = GymWrapper(env, lambda _: PursueGhost())
+            env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
 
@@ -164,6 +173,8 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s"
         % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+    if args.checkpoint:
+        os.makedirs(f"checkpoints/{run_name}", exist_ok=True)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -357,6 +368,16 @@ if __name__ == "__main__":
         writer.add_scalar(
             "charts/SPS", int(global_step / (time.time() - start_time)), global_step
         )
+
+        if args.checkpoint and iteration % 500 == 0:
+            checkpoint: dict[str, Any] = {
+                "model_state_dict": agent.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "iteration": iteration,
+                "global_step": global_step,
+                "args": vars(args),
+            }
+            torch.save(checkpoint, f"checkpoints/{run_name}/iter_{iteration}.pt")
 
     envs.close()
     writer.close()

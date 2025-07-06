@@ -1,1 +1,6 @@
 __pycache__/
+checkpoints/
+runs/
+videos/
+.vscode/
+observation.png

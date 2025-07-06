@@ -26,7 +26,7 @@ class PacmanEnv(
             raise ValueError(
                 '`render_mode` should be one of `PacmanEnv.metadata["render_modes"].'
             )
-        self._render_mode = render_mode
+        self.render_mode = render_mode
         self._player_sight_limit = agent_sight_limit
         self.player: str = "player"
         self.ghosts: list[str] = []
@@ -129,11 +129,11 @@ class PacmanEnv(
         return self._get_observation(), rewards, t, t, self._get_empty_infos()
 
     def render(self) -> str | np.ndarray[Any, np.dtype[np.uint8]]:
-        if self._render_mode == "ansi":
+        if self.render_mode == "ansi":
             return PacmanEnv.render_observation_ansi(
                 self._get_observation()[self.player]
             )
-        elif self._render_mode == "rgb_array":
+        elif self.render_mode == "rgb_array":
             return PacmanEnv.render_observation_rgb(
                 self._get_observation()[self.player]
             )

@@ -13,6 +13,7 @@ class GymWrapper(
     def __init__(self, env: PacmanEnv, ghost_builder: Callable[[str], GhostAgentBase]):
         self.env = env
         self.metadata = env.metadata
+        self.render_mode = env.render_mode
         self.observation_space = Tuple(
             (
                 MultiBinary((5, HEIGHT, WIDTH)),
