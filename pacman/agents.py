@@ -51,6 +51,14 @@ class GhostAgentBase(ABC):
         return actions
 
 
+class IdleGhost(GhostAgentBase):
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+    ) -> int:
+        return STAY
+
+
 class PursueGhost(GhostAgentBase):
     def get_action(
         self,
