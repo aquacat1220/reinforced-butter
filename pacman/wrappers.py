@@ -65,7 +65,7 @@ class GymWrapper(
     ) -> tuple[
         tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int], dict[Any, Any]
     ]:
-        observations, infos = self.env.reset()
+        observations, infos = self.env.reset(seed, options)
 
         self._last_observations = observations
 

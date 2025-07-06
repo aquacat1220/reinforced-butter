@@ -96,7 +96,7 @@ class PacmanEnv(
         dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
         dict[str, dict[Any, Any]],
     ]:
-        self._core.reset()
+        self._core.reset(seed)
         self._last_score = 0
         return self._get_observation(), self._get_empty_infos()
 
@@ -168,6 +168,3 @@ class PacmanEnv(
                 else:
                     print("  ", end="")
             print()
-
-    def is_terminated(self) -> bool:
-        return self._core.terminated

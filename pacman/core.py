@@ -72,21 +72,17 @@ POWER_DURATION = 10
 
 
 class PacmanCore:
-    def __init__(
-        self, player: str, ghosts: list[str] = [], num_power: int = 4, seed: int = 1220
-    ):
-        self._rng = np.random.default_rng(seed)
+    def __init__(self, player: str, ghosts: list[str] = [], num_power: int = 4):
         self.player: dict[str, tuple[int, int] | None] = {player: None}
         self.ghosts: dict[str, tuple[int, int] | None] = {
             ghost: None for ghost in ghosts
         }
         self._num_power = num_power
-        self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
-        self.score: int = 0
-        self.player_power_remaining = 0
-        self.terminated: bool = True
-        self._remaining_dots = np.count_nonzero(self.map & DOT)
-        self.reset()
+        # self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
+        # self.score: int = 0
+        # self.player_power_remaining = 0
+        # self.terminated: bool = True
+        # self._remaining_dots = np.count_nonzero(self.map & DOT)
 
     def _get_random(self, filter: np.uint8 = WALL) -> tuple[int, int]:
         while True:
@@ -132,7 +128,8 @@ class PacmanCore:
             return True
         return False
 
-    def reset(self):
+    def reset(self, seed: int | None = None):
+        self._rng = np.random.default_rng(seed)
         self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
         self.score: int = 0
         self.player_power_remaining = 0

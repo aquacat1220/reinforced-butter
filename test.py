@@ -15,7 +15,8 @@ import numpy as np
 env = PacmanEnv()
 env = GymWrapper(env, lambda _: PatrolPowerGhost())
 
-observation, _ = env.reset()
+# observation, _ = env.reset()
+observation, _ = env.reset(seed=1220)
 is_done: bool = False
 
 print(observation)
