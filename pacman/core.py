@@ -5,21 +5,21 @@ from typing import Any
 # The upper four bits are bit flags that mark if a player/power/dot/wall is present at that tile.
 # This is possible because there can be at max one player/power/dot/wall on a single tile.
 
-NONE = np.uint8(0b00000000)
-WALL = np.uint8(0b00010000)
-DOT = np.uint8(0b00100000)
-POWER = np.uint8(0b01000000)
-PLAYER = np.uint8(0b10000000)
+NONE = np.int8(0b00000000)
+WALL = np.int8(0b00010000)
+DOT = np.int8(0b00100000)
+POWER = np.int8(0b01000000)
+PLAYER = np.int8(0b10000000)
 
 # However (to stop ghosts from being stuck together), there can be more than one ghost on a single tile.
 # Thus we use the remaining 4 bits to hold the number of ghosts on that tile.
 
-GHOST = np.uint8(0b00001111)
-ONE_GHOST = np.uint8(0b00000001)
+GHOST = np.int8(0b00001111)
+ONE_GHOST = np.int8(0b00000001)
 
 # fmt: off
 # Disable formatting, so that `DOT ,` doesn't get formatted to `DOT,`.
-# TEMPLATE: np.ndarray[Any, np.dtype[np.uint8]] = np.array(
+# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
 #     [
 #         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
 #         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , DOT , WALL, DOT , DOT , DOT , WALL],
@@ -39,7 +39,7 @@ ONE_GHOST = np.uint8(0b00000001)
 #     ]
 # )
 
-TEMPLATE: np.ndarray[Any, np.dtype[np.uint8]] = np.array(
+TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
     [
         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
         [WALL, DOT , DOT , DOT , WALL, DOT , DOT , DOT , DOT , DOT , DOT ],
@@ -78,13 +78,13 @@ class PacmanCore:
             ghost: None for ghost in ghosts
         }
         self._num_power = num_power
-        # self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
+        # self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
         # self.score: int = 0
         # self.player_power_remaining = 0
         # self.terminated: bool = True
         # self._remaining_dots = np.count_nonzero(self.map & DOT)
 
-    def _get_random(self, filter: np.uint8 = WALL) -> tuple[int, int]:
+    def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
         while True:
             h = self._rng.integers(0, HEIGHT, dtype=int)
             w = self._rng.integers(0, WIDTH, dtype=int)
@@ -130,7 +130,7 @@ class PacmanCore:
 
     def reset(self, seed: int | None = None):
         self._rng = np.random.default_rng(seed)
-        self.map: np.ndarray[Any, np.dtype[np.uint8]] = TEMPLATE.copy()
+        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
         self.score: int = 0
         self.player_power_remaining = 0
         self.terminated: bool = False

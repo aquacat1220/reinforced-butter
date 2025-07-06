@@ -10,14 +10,14 @@ class GhostAgentBase(ABC):
     @abstractmethod
     def get_action(
         self,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
         return STAY
 
     @classmethod
     def find_path(
         cls,
-        walls: np.ndarray[Any, np.dtype[np.uint8]],
+        walls: np.ndarray[Any, np.dtype[np.int8]],
         start: tuple[int, int],
         end: tuple[int, int],
     ) -> list[int]:
@@ -54,7 +54,7 @@ class GhostAgentBase(ABC):
 class IdleGhost(GhostAgentBase):
     def get_action(
         self,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
         return STAY
 
@@ -62,7 +62,7 @@ class IdleGhost(GhostAgentBase):
 class PursueGhost(GhostAgentBase):
     def get_action(
         self,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
         walls = observation[0][0]
         player = observation[0][3]
@@ -83,7 +83,7 @@ class PatrolPowerGhost(GhostAgentBase):
 
     def get_action(
         self,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
         walls = observation[0][0]
         powers = observation[0][2]

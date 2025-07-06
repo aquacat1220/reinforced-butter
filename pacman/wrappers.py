@@ -8,7 +8,7 @@ from .core import HEIGHT, WIDTH, POWER_DURATION
 
 
 class GymWrapper(
-    Env[tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int], np.int64]
+    Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64]
 ):
     def __init__(self, env: PacmanEnv, ghost_builder: Callable[[str], GhostAgentBase]):
         self.env = env
@@ -21,13 +21,13 @@ class GymWrapper(
         )
         self.action_space = Discrete(5)
         self._last_observations: (
-            dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]]
+            dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]]
             | None
         ) = None
         self._ghost_builder = ghost_builder
 
     def step(self, action: np.int64) -> tuple[
-        tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
         float,
         bool,
         bool,
@@ -63,7 +63,7 @@ class GymWrapper(
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
-        tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int], dict[Any, Any]
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], dict[Any, Any]
     ]:
         observations, infos = self.env.reset(seed, options)
 
@@ -87,13 +87,22 @@ class GymWrapper(
 
 class StripWrapper(
     ObservationWrapper[
-        np.ndarray[Any, np.dtype[np.uint8]],
+        np.ndarray[Any, np.dtype[np.int8]],
         np.int64,
-        tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ]
 ):
+    def __init__(
+        self,
+        env: Env[
+            tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64
+        ],
+    ):
+        self.env = env
+        self.observation_space = MultiBinary((HEIGHT, WIDTH, 5))
+
     def observation(
         self,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
-    ) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+    ) -> np.ndarray[Any, np.dtype[np.int8]]:
         return observation[0]

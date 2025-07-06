@@ -11,7 +11,7 @@ from .core import WALL, DOT, POWER, PLAYER, GHOST, ONE_GHOST
 
 class PacmanEnv(
     ParallelEnv[
-        str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int], int
+        str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], int
     ]
 ):
     metadata = {"name": "pacman_env_v0", "render_modes": ["ansi"]}
@@ -59,7 +59,7 @@ class PacmanEnv(
 
     def _get_observation(
         self,
-    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]]:
+    ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]]:
         map = self._core.map
         full_observation = np.stack(
             [
@@ -74,7 +74,7 @@ class PacmanEnv(
         )
 
         observation: dict[
-            str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]
+            str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]
         ] = {}
         observation[self.player] = (full_observation, self._core.player[self.player], self._core.player_power_remaining)  # type: ignore
         for ghost in self.ghosts:
@@ -93,7 +93,7 @@ class PacmanEnv(
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]],
         dict[str, dict[Any, Any]],
     ]:
         self._core.reset(seed)
@@ -101,7 +101,7 @@ class PacmanEnv(
         return self._get_observation(), self._get_empty_infos()
 
     def step(self, actions: dict[str, int]) -> tuple[
-        dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
+        dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]],
         dict[str, float],
         dict[str, bool],
         dict[str, bool],
@@ -138,7 +138,7 @@ class PacmanEnv(
     @classmethod
     def render_observation(
         cls,
-        observation: tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int],
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ):
         tiles = observation[0]
         player_power_remaining = observation[2]
@@ -151,7 +151,7 @@ class PacmanEnv(
         )
         for h in range(HEIGHT):
             for w in range(WIDTH):
-                tile: np.uint8 = reconstructed_map[h, w]
+                tile: np.int8 = reconstructed_map[h, w]
                 if tile & WALL:
                     print(Fore.WHITE + "██", end="")
                 elif tile & PLAYER:
