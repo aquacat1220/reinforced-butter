@@ -34,7 +34,6 @@ class PacmanEnv(
             self.ghosts.append(f"ghost_{i}")
         self._core = PacmanCore(player=self.player, ghosts=self.ghosts)
         self._last_score = 0
-        self._infos: dict[str, dict[Any, Any]] | None = None
 
     def _valid_agent(self, agent: str) -> bool:
         if agent == self.player or agent in self.ghosts:
@@ -82,13 +81,11 @@ class PacmanEnv(
         return observation
 
     def _get_empty_infos(self) -> dict[str, dict[Any, Any]]:
-        if self._infos is not None:
-            return self._infos
-        self._infos = {}
-        self._infos[self.player] = {}
+        empty_infos: dict[str, dict[Any, Any]] = {}
+        empty_infos[self.player] = {}
         for ghost in self.ghosts:
-            self._infos[ghost] = {}
-        return self._infos
+            empty_infos[ghost] = {}
+        return empty_infos
 
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
