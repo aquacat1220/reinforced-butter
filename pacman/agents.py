@@ -5,6 +5,8 @@ from pathfinding.core.grid import Grid, GridNode  # type: ignore
 from pathfinding.finder.a_star import AStarFinder  # type: ignore
 from . import STAY, UP, DOWN, LEFT, RIGHT
 
+STUPIDITY = 3
+
 
 class GhostAgentBase(ABC):
     @abstractmethod
@@ -75,6 +77,21 @@ class PursueGhost(GhostAgentBase):
             len(actions) > 0
         )  # Since we always have a single player in the game, and we must haven't catch it yet, we can always find a path to it.
         return actions[0]
+
+
+class StupidPursueGhost(PursueGhost):
+    def __init__(self):
+        self._counter = 0
+
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+    ) -> int:
+        action: int = STAY
+        if self._counter % STUPIDITY == 0:
+            action = super().get_action(observation)
+        self._counter += 1
+        return action
 
 
 class PatrolPowerGhost(GhostAgentBase):

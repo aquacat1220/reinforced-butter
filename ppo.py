@@ -14,7 +14,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from typing import Any
-from pacman import PacmanEnv, GymWrapper, PursueGhost, StripWrapper
+from pacman import PacmanEnv, GymWrapper, StupidPursueGhost, StripWrapper
 
 
 @dataclass
@@ -66,9 +66,9 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.02
     """coefficient of the entropy"""
-    vf_coef: float = 0.5
+    vf_coef: float = 0.02
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
@@ -89,18 +89,18 @@ def make_env(env_id: str, idx: int, capture_video: bool, run_name: str):
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
             env = PacmanEnv(render_mode="rgb_array")
-            env = GymWrapper(env, lambda _: PursueGhost())
+            env = GymWrapper(env, lambda _: StupidPursueGhost())
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
                 f"videos/{run_name}",
-                episode_trigger=lambda id: id % 5000 == 0,
+                episode_trigger=lambda id: id % 50 == 0,
                 fps=1,
             )
         else:
             # env = gym.make(env_id)
             env = PacmanEnv()
-            env = GymWrapper(env, lambda _: PursueGhost())
+            env = GymWrapper(env, lambda _: StupidPursueGhost())
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
