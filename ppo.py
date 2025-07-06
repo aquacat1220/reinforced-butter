@@ -28,7 +28,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "ppo_pacman"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -37,7 +37,7 @@ class Args:
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
-    env_id: str = ""  # Ignore command line arguments and use `PacmanEnv`.
+    env_id: str = "SimplePacman"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
