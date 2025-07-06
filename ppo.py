@@ -117,31 +117,28 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
-        self.critic = nn.Sequential(
+
+        (C, H, W) = envs.single_observation_space.shape
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(5, 16, 3, stride=1)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(16, 32, 3, stride=1)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(32, 64, 3, stride=1)),
+            nn.ReLU(),
             nn.Flatten(),
-            layer_init(
-                nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)
-            ),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=1.0),
+            layer_init(nn.Linear(64 * (H - 6) * (W - 6), 256)),
+            nn.ReLU(),
         )
-        self.actor = nn.Sequential(
-            nn.Flatten(),
-            layer_init(
-                nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)
-            ),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
-        )
+        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        self.critic = layer_init(nn.Linear(256, 1), std=1)
 
     def get_value(self, x):
+        x = self.network(x)
         return self.critic(x)
 
     def get_action_and_value(self, x, action=None):
+        x = self.network(x)
         logits = self.actor(x)
         probs = Categorical(logits=logits)
         if action is None:
@@ -246,18 +243,36 @@ if __name__ == "__main__":
                 next_done
             ).to(device)
 
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
+            if "_episode" in infos:
+                _episode = infos["_episode"]
+                for i in range(len(_episode)):
+                    if _episode[i]:
                         print(
-                            f"global_step={global_step}, episodic_return={info['episode']['r']}"
+                            f"global_step={global_step}, episodic_return={infos['episode']['r'][i]}"
                         )
                         writer.add_scalar(
-                            "charts/episodic_return", info["episode"]["r"], global_step
+                            "charts/episodic_return",
+                            infos["episode"]["r"][i],
+                            global_step,
                         )
                         writer.add_scalar(
-                            "charts/episodic_length", info["episode"]["l"], global_step
+                            "charts/episodic_length",
+                            infos["episode"]["l"][i],
+                            global_step,
                         )
+
+            # if "final_info" in infos:
+            #     for info in infos["final_info"]:
+            #         if info and "episode" in info:
+            #             print(
+            #                 f"global_step={global_step}, episodic_return={info['episode']['r']}"
+            #             )
+            #             writer.add_scalar(
+            #                 "charts/episodic_return", info["episode"]["r"], global_step
+            #             )
+            #             writer.add_scalar(
+            #                 "charts/episodic_length", info["episode"]["l"], global_step
+            #             )
 
         # bootstrap value if not done
         with torch.no_grad():
