@@ -13,6 +13,8 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
+from pacman import PacmanEnv, GymWrapper, PursueGhost, StripWrapper
+
 
 @dataclass
 class Args:
@@ -34,7 +36,8 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "CartPole-v1"
+    # env_id: str = "CartPole-v1"
+    env_id: str = ""  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
@@ -78,13 +81,18 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
-def make_env(env_id, idx, capture_video, run_name):
+def make_env(env_id: str, idx: int, capture_video: bool, run_name: str):
     def thunk():
         if capture_video and idx == 0:
-            env = gym.make(env_id, render_mode="rgb_array")
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            # env = gym.make(env_id, render_mode="rgb_array")
+            # env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            env = PacmanEnv()
+            # `PacmanEnv` doesn't support RGB rendering, so ignore `capture_video`.
         else:
-            env = gym.make(env_id)
+            # env = gym.make(env_id)
+            env = PacmanEnv()
+        env = GymWrapper(env, lambda _: PursueGhost())
+        env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
 
@@ -101,6 +109,7 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
+            nn.Flatten(),
             layer_init(
                 nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)
             ),
@@ -110,6 +119,7 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor = nn.Sequential(
+            nn.Flatten(),
             layer_init(
                 nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)
             ),
