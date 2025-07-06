@@ -34,6 +34,7 @@ class PacmanEnv(
             self.ghosts.append(f"ghost_{i}")
         self._core = PacmanCore(player=self.player, ghosts=self.ghosts)
         self._last_score = 0
+        self._infos: dict[str, dict[Any, Any]] | None = None
 
     def _valid_agent(self, agent: str) -> bool:
         if agent == self.player or agent in self.ghosts:
@@ -80,15 +81,24 @@ class PacmanEnv(
             observation[ghost] = (full_observation, self._core.ghosts[ghost], self._core.player_power_remaining)  # type: ignore
         return observation
 
+    def _get_empty_infos(self) -> dict[str, dict[Any, Any]]:
+        if self._infos is not None:
+            return self._infos
+        self._infos = {}
+        self._infos[self.player] = {}
+        for ghost in self.ghosts:
+            self._infos[ghost] = {}
+        return self._infos
+
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
         dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
-        dict[Any, Any],
+        dict[str, dict[Any, Any]],
     ]:
         self._core.reset()
         self._last_score = 0
-        return self._get_observation(), {}
+        return self._get_observation(), self._get_empty_infos()
 
     def step(self, actions: dict[str, int]) -> tuple[
         dict[str, tuple[np.ndarray[Any, np.dtype[np.uint8]], tuple[int, int], int]],
@@ -119,7 +129,7 @@ class PacmanEnv(
             self._core.player[self.player] is None
         ) or self._core.terminated
 
-        return self._get_observation(), rewards, t, t, {}
+        return self._get_observation(), rewards, t, t, self._get_empty_infos()
 
     def render(self):
         assert self._render_mode == "ansi"
