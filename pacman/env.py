@@ -85,9 +85,23 @@ class PacmanEnv(
         observation: dict[
             str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]
         ] = {}
-        observation[self.player] = (full_observation, self._core.player[self.player], self._core.player_power_remaining)  # type: ignore
+        player_pos: tuple[int, int] | None = self._core.player[self.player]
+        if player_pos is None:
+            player_pos = (-1, -1)
+        observation[self.player] = (
+            full_observation,
+            player_pos,
+            self._core.player_power_remaining,
+        )
         for ghost in self.ghosts:
-            observation[ghost] = (full_observation, self._core.ghosts[ghost], self._core.player_power_remaining)  # type: ignore
+            ghost_pos: tuple[int, int] | None = self._core.ghosts[ghost]
+            if ghost_pos is None:
+                ghost_pos = (-1, -1)
+            observation[ghost] = (
+                full_observation,
+                ghost_pos,
+                self._core.player_power_remaining,
+            )
         return observation
 
     def _get_empty_infos(self) -> dict[str, dict[Any, Any]]:
