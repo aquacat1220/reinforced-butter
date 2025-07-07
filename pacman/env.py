@@ -25,7 +25,6 @@ class PacmanEnv(
     def __init__(
         self,
         render_mode: str = "ansi",
-        agent_sight_limit: int = 5,
         ghost_count: int = 2,
     ):
         if render_mode not in self.metadata["render_modes"]:
@@ -33,7 +32,6 @@ class PacmanEnv(
                 '`render_mode` should be one of `PacmanEnv.metadata["render_modes"].'
             )
         self.render_mode = render_mode
-        self._player_sight_limit = agent_sight_limit
         self.player: str = "player"
         self.ghosts: list[str] = []
         for i in range(ghost_count):
