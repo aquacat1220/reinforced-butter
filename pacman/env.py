@@ -8,6 +8,12 @@ from .core import HEIGHT, WIDTH
 from .core import POWER_DURATION
 from .core import WALL, DOT, POWER, PLAYER, GHOST, ONE_GHOST
 
+WALL_IDX = 0
+DOT_IDX = 1
+POWER_IDX = 2
+PLAYER_IDX = 3
+GHOST_IDX = 4
+
 
 class PacmanEnv(
     ParallelEnv[
@@ -60,15 +66,21 @@ class PacmanEnv(
         self,
     ) -> dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]]:
         map = self._core.map
+        stack: list[np.ndarray[Any, np.dtype[np.int8]] | None] = [
+            None,
+            None,
+            None,
+            None,
+            None,
+        ]
+        stack[WALL_IDX] = (map & WALL) != 0
+        stack[DOT_IDX] = (map & DOT) != 0
+        stack[POWER_IDX] = (map & POWER) != 0
+        stack[PLAYER_IDX] = (map & PLAYER) != 0
+        stack[GHOST_IDX] = map & GHOST
+        stack_: list[np.ndarray[Any, np.dtype[np.int8]]] = stack  # type: ignore
         full_observation = np.stack(
-            [
-                (map & WALL) != 0,
-                (map & DOT) != 0,
-                (map & POWER) != 0,
-                (map & PLAYER) != 0,
-                # The ghost map contains the number of ghosts on that tile.
-                (map & GHOST),
-            ],
+            stack_,
             axis=0,
         )
 
@@ -148,11 +160,11 @@ class PacmanEnv(
         tiles = observation[0]
         player_power_remaining = observation[2]
         reconstructed_map = (
-            tiles[0] * WALL
-            + tiles[1] * DOT
-            + tiles[2] * POWER
-            + tiles[3] * PLAYER
-            + tiles[4] * ONE_GHOST
+            tiles[WALL_IDX] * WALL
+            + tiles[DOT_IDX] * DOT
+            + tiles[POWER_IDX] * POWER
+            + tiles[PLAYER_IDX] * PLAYER
+            + tiles[GHOST_IDX] * ONE_GHOST
         )
         text: str = ""
         for h in range(HEIGHT):
@@ -184,11 +196,11 @@ class PacmanEnv(
         tiles = observation[0]
         player_power_remaining = observation[2]
         reconstructed_map = (
-            tiles[0] * WALL
-            + tiles[1] * DOT
-            + tiles[2] * POWER
-            + tiles[3] * PLAYER
-            + tiles[4] * ONE_GHOST
+            tiles[WALL_IDX] * WALL
+            + tiles[DOT_IDX] * DOT
+            + tiles[POWER_IDX] * POWER
+            + tiles[PLAYER_IDX] * PLAYER
+            + tiles[GHOST_IDX] * ONE_GHOST
         )
         image = np.zeros(shape=(HEIGHT, WIDTH, 3, 3, 3), dtype=np.uint8)
         for h in range(HEIGHT):

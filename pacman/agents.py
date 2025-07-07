@@ -3,7 +3,8 @@ from typing import Any
 from abc import ABC, abstractmethod
 from pathfinding.core.grid import Grid, GridNode  # type: ignore
 from pathfinding.finder.a_star import AStarFinder  # type: ignore
-from . import STAY, UP, DOWN, LEFT, RIGHT
+from .core import STAY, UP, DOWN, LEFT, RIGHT
+from .env import WALL_IDX, DOT_IDX, POWER_IDX, PLAYER_IDX, GHOST_IDX
 
 DEFAULT_STUPIDITY = 3
 
@@ -66,8 +67,8 @@ class PursueGhost(GhostAgentBase):
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
-        walls = observation[0][0]
-        player = observation[0][3]
+        walls = observation[0][WALL_IDX]
+        player = observation[0][PLAYER_IDX]
         # Follow the first player to be found.
         # The environment contains only one player anyways, so no need to worry.
         player_pos: tuple[int, int] = np.argwhere(player)[0]
@@ -103,8 +104,8 @@ class PatrolPowerGhost(GhostAgentBase):
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
-        walls = observation[0][0]
-        powers = observation[0][2]
+        walls = observation[0][WALL_IDX]
+        powers = observation[0][POWER_IDX]
         my_pos = observation[1]
         power_poss: list[tuple[int, int]] = np.argwhere(powers)  # type: ignore
         if len(power_poss) == 0:
