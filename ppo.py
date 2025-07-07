@@ -14,7 +14,13 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from typing import Any
-from pacman import PacmanEnv, GymWrapper, StupidPursueGhost, StripWrapper
+from pacman import (
+    PacmanEnv,
+    GymWrapper,
+    StupidPursueGhost,
+    StripWrapper,
+    PartialObservabilityWrapper,
+)
 
 
 @dataclass
@@ -35,10 +41,14 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    capture_interval: int = 200
+    """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
     stupidity: int = 2
     """how often `StupidPursueGhost`s move"""
+    sight_limit: int = 7
+    """sight limit (manhattan distance) of the player"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -86,23 +96,33 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
-def make_env(env_id: str, idx: int, capture_video: bool, run_name: str, stupidity: int):
+def make_env(
+    env_id: str,
+    idx: int,
+    capture_video: bool,
+    capture_interval: int,
+    run_name: str,
+    stupidity: int,
+    sight_limit: int,
+):
     def thunk():
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
             env = PacmanEnv(render_mode="rgb_array")
             env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
+            env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
                 f"videos/{run_name}",
-                episode_trigger=lambda id: id % 1000 == 0,
+                episode_trigger=lambda id: id % capture_interval == 0,
                 fps=1,
             )
         else:
             # env = gym.make(env_id)
             env = PacmanEnv()
             env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
+            env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
@@ -186,7 +206,15 @@ if __name__ == "__main__":
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [
-            make_env(args.env_id, i, args.capture_video, run_name, args.stupidity)
+            make_env(
+                env_id=args.env_id,
+                idx=i,
+                capture_video=args.capture_video,
+                capture_interval=args.capture_interval // args.num_envs,
+                run_name=run_name,
+                stupidity=args.stupidity,
+                sight_limit=args.sight_limit,
+            )
             for i in range(args.num_envs)
         ],
     )
