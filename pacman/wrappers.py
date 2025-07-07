@@ -5,6 +5,7 @@ from gymnasium.spaces import MultiBinary, Tuple, Discrete
 from .env import PacmanEnv
 from .agents import GhostAgentBase
 from .core import HEIGHT, WIDTH, POWER_DURATION
+from .env import WALL_IDX, DOT_IDX, POWER_IDX, PLAYER_IDX, GHOST_IDX
 
 
 class GymWrapper(
@@ -22,10 +23,6 @@ class GymWrapper(
             )
         )
         self.action_space = Discrete(5)
-        self._last_observations: (
-            dict[str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]]
-            | None
-        ) = None
         self._ghost_builder = ghost_builder
 
     def step(self, action: np.int64) -> tuple[
@@ -35,25 +32,24 @@ class GymWrapper(
         bool,
         dict[Any, Any],
     ]:
-        if self._last_observations is None:
-            raise Exception(
-                "`GymWrapper.step()` was called before `GymWrapper.reset()` was ever called."
-            )
-        actions: dict[str, int] = {}
+        actions = self._ghost_next_actions
         actions[self.env.player] = int(action)
-        for ghost_name, ghost in self._ghosts.items():
-            if self._ghost_dones[ghost_name]:
-                # If `ghost` is already done, skip fetching actions.
-                continue
-            actions[ghost_name] = ghost.get_action(self._last_observations[ghost_name])
         observations, rewards, terminations, truncations, infos = self.env.step(actions)
-        for ghost_name in self._ghost_dones:
-            if self._ghost_dones[ghost_name]:
+
+        self._ghost_next_actions = {}
+        # Effectively *moving* the dict from `self._ghost_next_actions` to `actions`.
+        for ghost_name, ghost_done in self._ghost_dones.items():
+            if ghost_done:
                 continue
-            self._ghost_dones[ghost_name] = (
-                terminations[ghost_name] or truncations[ghost_name]
+            if terminations[ghost_name] or truncations[ghost_name]:
+                self._ghost_dones[ghost_name] = True
+                continue
+            # Fetch actions only from ghosts that are not done yet.
+            ghost = self._ghosts[ghost_name]
+            self._ghost_next_actions[ghost_name] = ghost.get_action(
+                observations[ghost_name]
             )
-        self._last_observations = observations
+
         return (
             observations[self.env.player],
             rewards[self.env.player],
@@ -69,14 +65,16 @@ class GymWrapper(
     ]:
         observations, infos = self.env.reset(seed, options)
 
-        self._last_observations = observations
-
         self._ghosts: dict[str, GhostAgentBase] = {}
         self._ghost_dones: dict[str, bool] = {}
+        self._ghost_next_actions: dict[str, int] = {}
         for ghost_name in self.env.ghosts:
             ghost = self._ghost_builder(ghost_name)
             self._ghosts[ghost_name] = ghost
             self._ghost_dones[ghost_name] = False
+            self._ghost_next_actions[ghost_name] = ghost.get_action(
+                observations[ghost_name]
+            )
 
         return (
             observations[self.env.player],
@@ -108,3 +106,79 @@ class StripWrapper(
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> np.ndarray[Any, np.dtype[np.int8]]:
         return observation[0]
+
+
+class PartialObservabilityWrapper(
+    ObservationWrapper[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+        np.int64,
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+    ]
+):
+    def __init__(
+        self,
+        env: Env[
+            tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64
+        ],
+        sight_limit: int = 7,
+    ):
+        super().__init__(env)
+        self._sight_limit = sight_limit
+        self._last_observation: (
+            tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int] | None
+        ) = None
+        self._last_mask: np.ndarray[Any, np.dtype[np.bool]] | None = None
+
+    def observation(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
+    ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]:
+        self._last_observation = observation
+        dots = observation[0][DOT_IDX]
+        powers = observation[0][POWER_IDX]
+        player_pos = np.array(observation[1])
+        indices = np.indices((HEIGHT, WIDTH)).transpose((1, 2, 0))
+        signed_dist = indices - player_pos
+        unsigned_dist = np.abs(signed_dist)
+        dist = np.sum(unsigned_dist, axis=-1)
+        mask = dist <= self._sight_limit
+        self._last_mask = mask
+        masked_dots = np.where(mask, dots, -1)
+        masked_powers = np.where(mask, powers, -1)
+        observation[0][DOT_IDX] = masked_dots
+        observation[0][POWER_IDX] = masked_powers
+        return observation
+
+    def render(self):
+        if self.render_mode == "ansi":
+            raise NotImplementedError(
+                "I am too lazy to implement partial-observable text rendering."
+            )
+        elif self.render_mode == "rgb_array":
+            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
+
+            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
+            assert (self._last_observation is not None) and (
+                self._last_mask is not None
+            )  # This can happen if `reset()` wasn't called before calling `render()`.
+            # Tiles within sight range, or holding walls/players/ghosts can be seen.
+            # Strictly speaking, agent can never see dot/power status of tiles out of range.
+            # But since players and ghosts render *over* dots and powers, we don't need to mask tiles with players or ghosts.
+            mask = np.logical_or(
+                np.logical_or(self._last_mask, self._last_observation[0][WALL_IDX]),
+                np.logical_or(
+                    self._last_observation[0][PLAYER_IDX],
+                    self._last_observation[0][GHOST_IDX],
+                ),
+            )
+            mask = mask[:, :, np.newaxis, np.newaxis, np.newaxis]
+            tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
+                (0, 2, 1, 3, 4)
+            )
+            masked_tiled_image = np.where(
+                mask, tiled_image, np.array([0, 0, 100], dtype=np.uint8)
+            )
+            masked_image = masked_tiled_image.transpose((0, 2, 1, 3, 4)).reshape(
+                (HEIGHT * 3, WIDTH * 3, 3)
+            )
+            return masked_image
