@@ -7,6 +7,7 @@ from pacman import (
     RIGHT,
     PursueGhost,
     PatrolPowerGhost,
+    DefendPowerGhost,
     GymWrapper,
     StripWrapper,
     PartialObservabilityWrapper,
@@ -16,8 +17,8 @@ import numpy as np
 from PIL import Image
 
 env = PacmanEnv(render_mode="rgb_array")
-env = GymWrapper(env, lambda _: PatrolPowerGhost())
-env = PartialObservabilityWrapper(env)
+env = GymWrapper(env, lambda _: DefendPowerGhost())
+# env = PartialObservabilityWrapper(env)
 env = StripWrapper(env)
 
 # observation, _ = env.reset()
