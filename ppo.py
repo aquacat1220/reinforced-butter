@@ -37,12 +37,14 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
     checkpoint: bool = True
     """whether to store checkpoints"""
+    stupidity: int = 2
+    """how often `StupidPursueGhost`s move"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
     env_id: str = "SimplePacman"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
-    total_timesteps: int = 10000000
+    total_timesteps: int = 50000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -68,7 +70,7 @@ class Args:
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.02
     """coefficient of the entropy"""
-    vf_coef: float = 0.02
+    vf_coef: float = 0.25
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
@@ -84,23 +86,23 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
-def make_env(env_id: str, idx: int, capture_video: bool, run_name: str):
+def make_env(env_id: str, idx: int, capture_video: bool, run_name: str, stupidity: int):
     def thunk():
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
             env = PacmanEnv(render_mode="rgb_array")
-            env = GymWrapper(env, lambda _: StupidPursueGhost())
+            env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
                 f"videos/{run_name}",
-                episode_trigger=lambda id: id % 50 == 0,
+                episode_trigger=lambda id: id % 1000 == 0,
                 fps=1,
             )
         else:
             # env = gym.make(env_id)
             env = PacmanEnv()
-            env = GymWrapper(env, lambda _: StupidPursueGhost())
+            env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
@@ -184,7 +186,7 @@ if __name__ == "__main__":
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [
-            make_env(args.env_id, i, args.capture_video, run_name)
+            make_env(args.env_id, i, args.capture_video, run_name, args.stupidity)
             for i in range(args.num_envs)
         ],
     )

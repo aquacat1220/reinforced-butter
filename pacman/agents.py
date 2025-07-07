@@ -5,7 +5,7 @@ from pathfinding.core.grid import Grid, GridNode  # type: ignore
 from pathfinding.finder.a_star import AStarFinder  # type: ignore
 from . import STAY, UP, DOWN, LEFT, RIGHT
 
-STUPIDITY = 3
+DEFAULT_STUPIDITY = 3
 
 
 class GhostAgentBase(ABC):
@@ -80,15 +80,16 @@ class PursueGhost(GhostAgentBase):
 
 
 class StupidPursueGhost(PursueGhost):
-    def __init__(self):
+    def __init__(self, stupidity: int = DEFAULT_STUPIDITY):
         self._counter = 0
+        self._stupidity = stupidity
 
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ) -> int:
         action: int = STAY
-        if self._counter % STUPIDITY == 0:
+        if self._counter % self._stupidity == 0:
             action = super().get_action(observation)
         self._counter += 1
         return action
