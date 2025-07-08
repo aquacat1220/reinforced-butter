@@ -18,6 +18,8 @@ from pacman import (
     PacmanEnv,
     GymWrapper,
     StupidPursueGhost,
+    PatrolPowerGhost,
+    GhostAgentBase,
     StripWrapper,
     PartialObservabilityWrapper,
 )
@@ -41,7 +43,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    capture_interval: int = 200
+    capture_interval: int = 4000
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
@@ -106,10 +108,18 @@ def make_env(
     sight_limit: int,
 ):
     def thunk():
+        # ghost_builder = lambda _: StupidPursueGhost(stupidity)
+        def ghost_builder(ghost_name: str) -> GhostAgentBase:
+            if int(ghost_name[-1]) % 2 == 0:
+                return StupidPursueGhost(stupidity)
+            else:
+                return StupidPursueGhost(stupidity)
+                # return PatrolPowerGhost()
+
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
             env = PacmanEnv(render_mode="rgb_array")
-            env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
+            env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
@@ -121,7 +131,7 @@ def make_env(
         else:
             # env = gym.make(env_id)
             env = PacmanEnv()
-            env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity))
+            env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
