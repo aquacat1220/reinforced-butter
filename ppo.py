@@ -47,16 +47,18 @@ class Args:
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
-    stupidity: int = 2
+    stupidity: int = 1
     """how often `StupidPursueGhost`s move"""
     sight_limit: int = 7
     """sight limit (manhattan distance) of the player"""
+    num_ghosts: int = 3
+    """number of ghost agents to spawn"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
     env_id: str = "SimplePacman"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
-    total_timesteps: int = 50000000
+    total_timesteps: int = 80000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -106,6 +108,7 @@ def make_env(
     run_name: str,
     stupidity: int,
     sight_limit: int,
+    ghost_count: int,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
@@ -118,7 +121,7 @@ def make_env(
 
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
-            env = PacmanEnv(render_mode="rgb_array")
+            env = PacmanEnv(render_mode="rgb_array", ghost_count=ghost_count)
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
@@ -130,7 +133,7 @@ def make_env(
             )
         else:
             # env = gym.make(env_id)
-            env = PacmanEnv()
+            env = PacmanEnv(ghost_count=ghost_count)
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = StripWrapper(env)
@@ -224,6 +227,7 @@ if __name__ == "__main__":
                 run_name=run_name,
                 stupidity=args.stupidity,
                 sight_limit=args.sight_limit,
+                ghost_count=args.num_ghosts,
             )
             for i in range(args.num_envs)
         ],
