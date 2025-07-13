@@ -14,6 +14,7 @@ class GymWrapper(
     """
     Wrapper to convert `PacmanEnv` from a `pettingzoo.ParallelEnv` to a `gym.Env`.
     Uses predetermined `GhostAgentBase`s to produce ghost agent actions, and exposes observations and rewards for the player.
+    Passes the inner observation in `info["gym_wrapper_inner_observations"]`.
     """
 
     def __init__(self, env: PacmanEnv, ghost_builder: Callable[[str], GhostAgentBase]):
@@ -62,15 +63,19 @@ class GymWrapper(
                 observations[ghost_name]
             )
 
+        info = infos[self.env.player]
+        info["gym_wrapper_inner_observations"] = observations
+
         return (
             observations[self.env.player],
             rewards[self.env.player],
             terminations[self.env.player],
             truncations[self.env.player],
-            infos[self.env.player],
+            info,
         )
 
-    def reset(
+    # God knows why the line below is a type error.
+    def reset(  # type: ignore
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], dict[Any, Any]
@@ -88,10 +93,10 @@ class GymWrapper(
                 observations[ghost_name]
             )
 
-        return (
-            observations[self.env.player],
-            infos[self.env.player],
-        )
+        info = infos[self.env.player]
+        info["gym_wrapper_inner_observations"] = observations
+
+        return (observations[self.env.player], info)
 
     def render(self) -> str | np.ndarray[Any, np.dtype[np.uint8]]:
         return self.env.render()
