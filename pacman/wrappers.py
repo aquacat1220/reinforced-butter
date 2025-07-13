@@ -11,7 +11,19 @@ from .env import WALL_IDX, DOT_IDX, POWER_IDX, PLAYER_IDX, GHOST_IDX
 class GymWrapper(
     Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64]
 ):
+    """
+    Wrapper to convert `PacmanEnv` from a `pettingzoo.ParallelEnv` to a `gym.Env`.
+    Uses predetermined `GhostAgentBase`s to produce ghost agent actions, and exposes observations and rewards for the player.
+    """
+
     def __init__(self, env: PacmanEnv, ghost_builder: Callable[[str], GhostAgentBase]):
+        """
+        Construct a `GymWrapper` instance wrapping a `PacmanEnv`, supplying ghost actions with ghost agents built from `ghost_builder`.
+
+        Args:
+            env (PacmanEnv): The `PacmanEnv` instance to wrap.
+            ghost_builder (Callable[[str], GhostAgentBase]): A builder function that takes in the ghost agent name (`str`) and returns a `GhostAgentBase` instance.
+        """
         self.env = env
         self.metadata = env.metadata
         self.render_mode = env.render_mode
@@ -92,6 +104,10 @@ class StripWrapper(
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ]
 ):
+    """
+    Wrapper to strip away player position / remaining power duration from the observation, leaving only the map info.
+    """
+
     def __init__(
         self,
         env: Env[
@@ -115,6 +131,13 @@ class PartialObservabilityWrapper(
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
     ]
 ):
+    """
+    Wrapper to apply a manhattan distance based visibility limit to the observation. Intended to wrap `GymWrapper`.
+
+    Args:
+        ObservationWrapper (_type_): _description_
+    """
+
     def __init__(
         self,
         env: Env[
@@ -150,6 +173,15 @@ class PartialObservabilityWrapper(
         return observation
 
     def render(self):
+        """
+        Overrided `render()` function that masks away non-observable portions of the full observation.
+
+        Raises:
+            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
+
+        Returns:
+            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
+        """
         if self.render_mode == "ansi":
             raise NotImplementedError(
                 "I am too lazy to implement partial-observable text rendering."

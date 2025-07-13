@@ -82,7 +82,7 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.04
+    ent_coef: float = 0.02
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -165,11 +165,11 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64 * (H - 6) * (W - 6), 256)),
             nn.ReLU(),
         )
-        # self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
-        self.actor = nn.Sequential(
-            layer_init(nn.Linear(256, 64), std=0.01),
-            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
-        )
+        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        # self.actor = nn.Sequential(
+        #     layer_init(nn.Linear(256, 64), std=0.01),
+        #     layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
+        # )
         self.critic = layer_init(nn.Linear(256, 1), std=1)
         # self.critic = nn.Sequential(
         #     layer_init(nn.Linear(256, 64), std=1), layer_init(nn.Linear(64, 1), std=1)
