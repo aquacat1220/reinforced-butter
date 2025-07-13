@@ -27,7 +27,7 @@ from pacman import (
 
 @dataclass
 class Args:
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    exp_name: str = "deeper_actor_shallow_critic_two_ghosts"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -51,7 +51,7 @@ class Args:
     """how often `StupidPursueGhost`s move"""
     sight_limit: int = 7
     """sight limit (manhattan distance) of the player"""
-    num_ghosts: int = 3
+    num_ghosts: int = 2
     """number of ghost agents to spawn"""
 
     # Algorithm specific arguments
@@ -82,9 +82,9 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.02
+    ent_coef: float = 0.04
     """coefficient of the entropy"""
-    vf_coef: float = 0.25
+    vf_coef: float = 0.5
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
@@ -165,8 +165,15 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64 * (H - 6) * (W - 6), 256)),
             nn.ReLU(),
         )
-        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        # self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(256, 64), std=0.01),
+            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
+        )
         self.critic = layer_init(nn.Linear(256, 1), std=1)
+        # self.critic = nn.Sequential(
+        #     layer_init(nn.Linear(256, 64), std=1), layer_init(nn.Linear(64, 1), std=1)
+        # )
 
     def get_value(self, x):
         x = self.network(x)
