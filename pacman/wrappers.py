@@ -128,6 +128,14 @@ class PreviewWrapper(
         preview_steps: int = 2,
     ):
         super().__init__(env)
+        self.observation_space = Tuple(
+            (
+                MultiBinary((5 + preview_steps, HEIGHT, WIDTH)),
+                Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
+                Discrete(POWER_DURATION + 1),
+            )
+        )
+        self.action_space = Discrete(5)
         self._preview_steps = preview_steps
         self._ghost_builder = ghost_builder
 
@@ -323,7 +331,7 @@ class StripWrapper(
         ],
     ):
         super().__init__(env)
-        self.observation_space = MultiBinary((5, HEIGHT, WIDTH))
+        self.observation_space = self.env.observation_space.spaces[0]  # type: ignore
 
     def observation(
         self,

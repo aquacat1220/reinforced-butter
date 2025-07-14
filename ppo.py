@@ -22,12 +22,13 @@ from pacman import (
     GhostAgentBase,
     StripWrapper,
     PartialObservabilityWrapper,
+    PreviewWrapper,
 )
 
 
 @dataclass
 class Args:
-    exp_name: str = "deeper_actor_shallow_critic_two_ghosts"
+    exp_name: str = "preview_two_steps"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -35,7 +36,7 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
+    track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "ppo_pacman"
     """the wandb's project name"""
@@ -53,6 +54,8 @@ class Args:
     """sight limit (manhattan distance) of the player"""
     num_ghosts: int = 2
     """number of ghost agents to spawn"""
+    preview_steps: int = 2
+    """number of steps to preview into the future"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -109,6 +112,7 @@ def make_env(
     stupidity: int,
     sight_limit: int,
     ghost_count: int,
+    preview_steps: int,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
@@ -124,6 +128,9 @@ def make_env(
             env = PacmanEnv(render_mode="rgb_array", ghost_count=ghost_count)
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
+            env = PreviewWrapper(
+                env, ghost_builder=ghost_builder, preview_steps=preview_steps
+            )
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
@@ -136,6 +143,9 @@ def make_env(
             env = PacmanEnv(ghost_count=ghost_count)
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
+            env = PreviewWrapper(
+                env, ghost_builder=ghost_builder, preview_steps=preview_steps
+            )
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
@@ -155,7 +165,7 @@ class Agent(nn.Module):
 
         (C, H, W) = envs.single_observation_space.shape
         self.network = nn.Sequential(
-            layer_init(nn.Conv2d(5, 16, 3, stride=1)),
+            layer_init(nn.Conv2d(C, 16, 3, stride=1)),
             nn.ReLU(),
             layer_init(nn.Conv2d(16, 32, 3, stride=1)),
             nn.ReLU(),
@@ -205,6 +215,8 @@ if __name__ == "__main__":
             name=run_name,
             monitor_gym=True,
             save_code=True,
+            mode="offline",
+            dir="wandb",
         )
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
@@ -235,6 +247,7 @@ if __name__ == "__main__":
                 stupidity=args.stupidity,
                 sight_limit=args.sight_limit,
                 ghost_count=args.num_ghosts,
+                preview_steps=args.preview_steps,
             )
             for i in range(args.num_envs)
         ],
