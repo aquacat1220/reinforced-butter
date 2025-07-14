@@ -74,9 +74,12 @@ class PursueGhost(GhostAgentBase):
         player_pos: tuple[int, int] = np.argwhere(player)[0]
         my_pos = observation[1]
         actions = GhostAgentBase.find_path(walls, my_pos, player_pos)
-        assert (
-            len(actions) > 0
-        )  # Since we always have a single player in the game, and we must haven't catch it yet, we can always find a path to it.
+        # assert (
+        #     len(actions) > 0
+        # )  # Since we always have a single player in the game, and we must haven't catch it yet, we can always find a path to it.
+        # The above was true until I added `PreviewWrapper`, where the ghost could preview into the future.
+        if len(actions) == 0:
+            return STAY
         return actions[0]
 
 

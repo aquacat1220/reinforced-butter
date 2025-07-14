@@ -5,24 +5,26 @@ from pacman import (
     DOWN,
     LEFT,
     RIGHT,
-    PursueGhost,
+    StupidPursueGhost,
     PatrolPowerGhost,
     DefendPowerGhost,
     GymWrapper,
     StripWrapper,
     PartialObservabilityWrapper,
+    PreviewWrapper,
 )
 from rich import print
 import numpy as np
 from PIL import Image
 
 env = PacmanEnv(render_mode="rgb_array")
-env = GymWrapper(env, lambda _: DefendPowerGhost())
-# env = PartialObservabilityWrapper(env)
+env = GymWrapper(env, lambda _: StupidPursueGhost(stupidity=1))
+env = PartialObservabilityWrapper(env)
+env = PreviewWrapper(env, lambda _: StupidPursueGhost(stupidity=1))
 env = StripWrapper(env)
 
 # observation, _ = env.reset()
-observation, _ = env.reset(seed=1220)
+observation, _ = env.reset(seed=1221)
 is_done: bool = False
 
 print(observation)

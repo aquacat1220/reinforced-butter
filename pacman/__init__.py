@@ -8,4 +8,9 @@ from .agents import (
     PatrolPowerGhost,
     DefendPowerGhost,
 )
-from .wrappers import GymWrapper, StripWrapper, PartialObservabilityWrapper
+from .wrappers import (
+    GymWrapper,
+    StripWrapper,
+    PartialObservabilityWrapper,
+    PreviewWrapper,
+)
