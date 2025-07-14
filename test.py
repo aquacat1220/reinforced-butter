@@ -47,8 +47,9 @@ while True:
         action = RIGHT
     else:
         continue
-    observation, _, terminated, truncated, _ = env.step(np.int64(action))
+    observation, reward, terminated, truncated, _ = env.step(np.int64(action))
     print(observation)
+    print("Reward: ", reward)
     image = Image.fromarray(env.render())  # type: ignore
     image.save("observation.png")
     is_done = terminated or truncated

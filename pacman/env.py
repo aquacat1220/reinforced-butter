@@ -3,7 +3,10 @@ from gymnasium.spaces import MultiBinary, Discrete, Tuple
 import numpy as np
 from typing import Any
 from colorama import Fore
-from .core import PacmanCore
+from pathfinding.core.grid import Grid, GridNode  # type: ignore
+from pathfinding.finder.a_star import AStarFinder  # type: ignore
+from .core import STAY, UP, DOWN, LEFT, RIGHT
+from .core import PacmanCore, Event
 from .core import HEIGHT, WIDTH
 from .core import POWER_DURATION
 from .core import WALL, DOT, POWER, PLAYER, GHOST, ONE_GHOST
@@ -13,6 +16,45 @@ DOT_IDX = 1
 POWER_IDX = 2
 PLAYER_IDX = 3
 GHOST_IDX = 4
+
+DOT_SCORE = 1
+POWER_SCORE = 5
+GHOST_KILL_SCORE = 20
+WIN_SCORE = 50
+LOSE_SCORE = -50
+
+
+def find_path(
+    grid: Grid,
+    start: tuple[int, int],
+    end: tuple[int, int],
+) -> list[int]:
+    start_node = grid.node(x=start[1], y=start[0])  # type: ignore
+    end_node = grid.node(x=end[1], y=end[0])  # type: ignore
+    finder = AStarFinder()
+    path: list[GridNode] = finder.find_path(start_node, end_node, grid)[0]  # type: ignore
+    actions: list[int] = []
+    curr_node = start_node
+    for path_node in path[1:]:  # type: ignore
+        if curr_node.x == path_node.x:  # type: ignore
+            if curr_node.y - 1 == path_node.y:  # type: ignore
+                action = UP
+            elif curr_node.y + 1 == path_node.y:  # type: ignore
+                action = DOWN
+            else:
+                raise Exception("Unreachable")
+        elif curr_node.y == path_node.y:  # type: ignore
+            if curr_node.x - 1 == path_node.x:  # type: ignore
+                action = LEFT
+            elif curr_node.x + 1 == path_node.x:  # type: ignore
+                action = RIGHT
+            else:
+                raise Exception("Unreachable")
+        else:
+            raise Exception("Unreachable")
+        actions.append(action)
+        curr_node = path_node  # type: ignore
+    return actions
 
 
 class PacmanEnv(
@@ -37,7 +79,6 @@ class PacmanEnv(
         for i in range(ghost_count):
             self.ghosts.append(f"ghost_{i}")
         self._core = PacmanCore(player=self.player, ghosts=self.ghosts)
-        self._last_score = 0
 
     def _valid_agent(self, agent: str) -> bool:
         if agent == self.player or agent in self.ghosts:
@@ -111,6 +152,41 @@ class PacmanEnv(
             empty_infos[ghost] = {}
         return empty_infos
 
+    def _compute_score(self, events: list[Event]) -> float:
+        score: float = 0
+        for event in events:
+            if event == Event.CONSUME_DOT:
+                score += DOT_SCORE
+            elif event == Event.CONSUME_POWER:
+                score += POWER_SCORE
+            elif event == Event.KILL_GHOST:
+                score += GHOST_KILL_SCORE
+            elif event == Event.LOSE:
+                score += LOSE_SCORE
+            elif event == Event.WIN:
+                score += WIN_SCORE
+            else:
+                raise Exception("Unreachable")
+        return score
+
+    def _compute_min_distance(self) -> int:
+        min_distance: int | None = None
+        player_pos = self._core.player[self.player]
+        if player_pos is not None:
+            # Then compute min distance between ghost and player.
+            for ghost_name in self.ghosts:
+                ghost_pos = self._core.ghosts[ghost_name]
+                if ghost_pos is None:
+                    continue
+                distance = len(find_path(self._grid, ghost_pos, player_pos))
+                if min_distance is None:
+                    min_distance = distance
+                else:
+                    min_distance = min(distance, min_distance)
+        if min_distance is None:
+            return 0
+        return min_distance
+
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
     ) -> tuple[
@@ -118,7 +194,10 @@ class PacmanEnv(
         dict[str, dict[Any, Any]],
     ]:
         self._core.reset(seed)
-        self._last_score = 0
+        walls = (self._core.map & WALL) != 0
+        self._grid: Grid = Grid(matrix=1 - walls)
+
+        self._last_min_distance: int = self._compute_min_distance()
         return self._get_observation(), self._get_empty_infos()
 
     def step(self, actions: dict[str, int]) -> tuple[
@@ -136,11 +215,17 @@ class PacmanEnv(
                 action = actions[ghost]
                 self._core.perform_action(ghost, action)
 
-        score_delta = self._core.score - self._last_score
-        self._last_score = self._core.score
+        score = self._compute_score(self._core.events)
+        # Consume the event queue to compute score.
+        self._core.events.clear()
 
-        rewards: dict[str, float] = {ghost: -score_delta for ghost in self.ghosts}
-        rewards[self.player] = score_delta
+        min_distance = self._compute_min_distance()
+        delta_min_distance = min_distance - self._last_min_distance
+        self._last_min_distance = min_distance
+
+        reward: float = score + delta_min_distance
+        rewards: dict[str, float] = {ghost: -reward for ghost in self.ghosts}
+        rewards[self.player] = reward
 
         t: dict[str, bool] = {
             ghost: (self._core.ghosts[ghost] is None) or (self._core.terminated)

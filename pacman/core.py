@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Any
+from enum import Enum
 
 # Each tile is represented as a single 8bit integer.
 # The upper four bits are bit flags that mark if a player/power/dot/wall is present at that tile.
@@ -63,13 +64,16 @@ DOWN = 2
 LEFT = 3
 RIGHT = 4
 
-DOT_SCORE = 1
-POWER_SCORE = 5
-GHOST_KILL_SCORE = 20
-WIN_SCORE = 50
-LOSE_SCORE = -50
 
 POWER_DURATION = 10
+
+
+class Event(Enum):
+    CONSUME_DOT = 0
+    CONSUME_POWER = 1
+    KILL_GHOST = 2
+    WIN = 3
+    LOSE = 4
 
 
 class PacmanCore:
@@ -132,7 +136,7 @@ class PacmanCore:
     def reset(self, seed: int | None = None):
         self._rng = np.random.default_rng(seed)
         self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
-        self.score: int = 0
+        self.events: list[Event] = []
         self.player_power_remaining = 0
         self.terminated: bool = False
 
@@ -200,7 +204,7 @@ class PacmanCore:
                     self.player[player] = None
                     break
                 raise Exception("Unreachable")
-            self.score += LOSE_SCORE
+            self.events.append(Event.LOSE)
             self.terminated = True
 
         # And move the ghost.
@@ -231,21 +235,20 @@ class PacmanCore:
         if self.map[new_pos] & DOT:
             # If the new tile has a dot, consume it, add to score, and decrement dot count.
             self.map[new_pos] ^= DOT
-            self.score += DOT_SCORE
+            self.events.append(Event.CONSUME_DOT)
             self._remaining_dots -= 1
             if self._remaining_dots == 0:
                 # If all dots were consumed, add win score, and terminate game.
                 self.map[player_pos] ^= PLAYER
                 self.map[new_pos] ^= PLAYER
                 self.player[player] = new_pos
-                self.score += WIN_SCORE
                 self.terminated = True
                 return
 
         if self.map[new_pos] & POWER:
             # If the new tile has a power, consume it, add to score, and refresh power.
             self.map[new_pos] ^= POWER
-            self.score += POWER_SCORE
+            self.events.append(Event.CONSUME_POWER)
             self.player_power_remaining = POWER_DURATION
 
         if self.map[new_pos] & PLAYER:
@@ -261,7 +264,7 @@ class PacmanCore:
                 for ghost in self.ghosts:
                     if self.ghosts[ghost] == new_pos:
                         self.ghosts[ghost] = None
-                        self.score += GHOST_KILL_SCORE
+                        self.events.append(Event.KILL_GHOST)
                 # If that was the last ghost, add win score, and terminate game.
                 was_last_ghost = True
                 for ghost_pos in self.ghosts.values():
@@ -269,13 +272,13 @@ class PacmanCore:
                         was_last_ghost = False
                         break
                 if was_last_ghost:
-                    self.score += WIN_SCORE
+                    self.events.append(Event.WIN)
                     self.terminated = True
             else:
                 # If we don't have power, remove player from map, update `self._player`, add lose score, and terminate game.
                 self.map[player_pos] ^= PLAYER
                 self.player[player] = None
-                self.score += LOSE_SCORE
+                self.events.append(Event.LOSE)
                 self.terminated = True
                 return
         # If player was not killed by a ghost, move player to new position.
