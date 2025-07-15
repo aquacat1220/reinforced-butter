@@ -68,12 +68,14 @@ class PacmanEnv(
         self,
         render_mode: str = "ansi",
         ghost_count: int = 2,
+        use_distance_reward: bool = False,
     ):
         if render_mode not in self.metadata["render_modes"]:
             raise ValueError(
                 '`render_mode` should be one of `PacmanEnv.metadata["render_modes"].'
             )
         self.render_mode = render_mode
+        self._use_distance_reward = use_distance_reward
         self.player: str = "player"
         self.ghosts: list[str] = []
         for i in range(ghost_count):
@@ -219,11 +221,19 @@ class PacmanEnv(
         # Consume the event queue to compute score.
         self._core.events.clear()
 
-        min_distance = self._compute_min_distance()
-        delta_min_distance = min_distance - self._last_min_distance
-        self._last_min_distance = min_distance
+        reward: float = score
 
-        reward: float = score + delta_min_distance
+        if self._use_distance_reward:
+            min_distance = self._compute_min_distance()
+            delta_min_distance = min_distance - self._last_min_distance
+            self._last_min_distance = min_distance
+
+            if self._core.player_power_remaining > 0:
+                # If player has power, the closer we are to the ghosts the better it is.
+                delta_min_distance = -delta_min_distance
+
+            reward += delta_min_distance
+
         rewards: dict[str, float] = {ghost: -reward for ghost in self.ghosts}
         rewards[self.player] = reward
 

@@ -28,7 +28,7 @@ from pacman import (
 
 @dataclass
 class Args:
-    exp_name: str = "preview_two_steps"
+    exp_name: str = "preview_two_steps_with_distance_rewards_easy"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -48,24 +48,26 @@ class Args:
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
-    stupidity: int = 1
+    stupidity: int = 2
     """how often `StupidPursueGhost`s move"""
     sight_limit: int = 7
     """sight limit (manhattan distance) of the player"""
-    num_ghosts: int = 2
+    num_ghosts: int = 3
     """number of ghost agents to spawn"""
     preview_steps: int = 2
     """number of steps to preview into the future"""
+    use_distance_reward: bool = False
+    """whether to use distance based rewards"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
     env_id: str = "SimplePacman"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
-    total_timesteps: int = 80000000
+    total_timesteps: int = 50000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4
+    num_envs: int = 8
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -113,6 +115,7 @@ def make_env(
     sight_limit: int,
     ghost_count: int,
     preview_steps: int,
+    use_distance_reward: bool,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
@@ -125,7 +128,11 @@ def make_env(
 
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
-            env = PacmanEnv(render_mode="rgb_array", ghost_count=ghost_count)
+            env = PacmanEnv(
+                render_mode="rgb_array",
+                ghost_count=ghost_count,
+                use_distance_reward=use_distance_reward,
+            )
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = PreviewWrapper(
@@ -140,7 +147,9 @@ def make_env(
             )
         else:
             # env = gym.make(env_id)
-            env = PacmanEnv(ghost_count=ghost_count)
+            env = PacmanEnv(
+                ghost_count=ghost_count, use_distance_reward=use_distance_reward
+            )
             env = GymWrapper(env, ghost_builder=ghost_builder)
             env = PartialObservabilityWrapper(env, sight_limit=sight_limit)
             env = PreviewWrapper(
@@ -248,6 +257,7 @@ if __name__ == "__main__":
                 sight_limit=args.sight_limit,
                 ghost_count=args.num_ghosts,
                 preview_steps=args.preview_steps,
+                use_distance_reward=args.use_distance_reward,
             )
             for i in range(args.num_envs)
         ],
