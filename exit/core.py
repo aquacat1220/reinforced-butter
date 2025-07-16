@@ -20,9 +20,9 @@ TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
         [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-        [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, DEFENDER, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+        [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-        [WALL, EXIT, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, DECOY, WALL],
+        [WALL, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, WALL],
         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL, WALL, WALL, WALL, WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
@@ -30,10 +30,29 @@ TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-        [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, ATTACKER, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
+        [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
     ]
 )
+# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
+#     [
+#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+#         [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
+#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, DEFENDER, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+#         [WALL, EXIT, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, DECOY, WALL],
+#         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
+#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL, WALL, WALL, WALL, WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+#         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
+#         [WALL, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, WALL],
+#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+#         [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, ATTACKER, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
+#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+#     ]
+# )
 
 # TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
 #     [
@@ -76,6 +95,15 @@ class ExitCore:
         self.defender: tuple[int, int] | None = None
 
     def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
+        """
+        Fetch a random tile position that doesn't have any of the entities mentioned in `filter`.
+
+        Args:
+            filter (np.int8, optional): Filter of entities to avoid. Defaults to WALL.
+
+        Returns:
+            tuple[int, int]: The position of the selected tile.
+        """
         while True:
             h = self._rng.integers(0, HEIGHT, dtype=int)
             w = self._rng.integers(0, WIDTH, dtype=int)
@@ -117,10 +145,20 @@ class ExitCore:
     def reset(self, seed: int | None = None):
         self._rng = np.random.default_rng(seed)
         self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
-        attacker_pos = np.argwhere(self.map & ATTACKER)[0]
-        self.attacker = (attacker_pos[0], attacker_pos[1])
-        defender_pos = np.argwhere(self.map & DEFENDER)[0]
-        self.defender = (defender_pos[0], defender_pos[1])
+        exit_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+        self.map[exit_pos] ^= EXIT
+        decoy_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+        self.map[decoy_pos] ^= DECOY
+        attacker_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+        self.map[attacker_pos] ^= ATTACKER
+        self.attacker = attacker_pos
+        defender_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+        self.map[defender_pos] ^= DEFENDER
+        self.defender = defender_pos
+        # attacker_pos = np.argwhere(self.map & ATTACKER)[0]
+        # self.attacker = (attacker_pos[0], attacker_pos[1])
+        # defender_pos = np.argwhere(self.map & DEFENDER)[0]
+        # self.defender = (defender_pos[0], defender_pos[1])
         self.events: list[Event] = []
         self.terminated: bool = False
 
