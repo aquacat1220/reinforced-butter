@@ -7,6 +7,8 @@ from exit import (
     RIGHT,
     StupidAttacker,
     NaiveExitAttacker,
+    EvadeAttacker,
+    DistanceSwitchAttacker,
     GymWrapper,
     PartialObservabilityWrapper,
     StripWrapper,
@@ -16,7 +18,13 @@ import numpy as np
 from PIL import Image
 
 env = ExitEnv(render_mode="rgb_array")
-env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
+env = GymWrapper(
+    env,
+    lambda: DistanceSwitchAttacker(
+        5, StupidAttacker(NaiveExitAttacker(), stupidity=2), EvadeAttacker()
+    ),
+)
+# env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
 env = PartialObservabilityWrapper(env)
 env = StripWrapper(env)
 # observation, _ = env.reset()
