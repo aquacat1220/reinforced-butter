@@ -19,7 +19,7 @@ from exit import (
     GymWrapper,
     StupidAttacker,
     PursueAttacker,
-    DistanceSwitchAttacker,
+    DeceptiveAttacker,
     EvadeAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
@@ -28,7 +28,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_switching_attacker"
+    exp_name: str = "exit_env_deceptive_attacker"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -55,14 +55,17 @@ class Args:
     distance_reward_coeff: float = 0.1
     """whether to use distance based rewards"""
     max_steps: int = 256
-    trigger_distance: int = 5
-    """trigger distance for distance switch attacker"""
+    safety_distance: int = 5
+    """safety distance the attacker tries to maintain with the defender"""
+    commit_distance: int = 3
+    """the distance the attacker will decide to ignore the defender and commit to its goal"""
+    stop_deception_after: int = 32
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
     env_id: str = "exit_env_v0"  # Ignore command line arguments and use `PacmanEnv`.
     """the id of the environment"""
-    total_timesteps: int = 50000000
+    total_timesteps: int = 80000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -114,15 +117,18 @@ def make_env(
     # preview_steps: int,
     distance_reward_coeff: float,
     max_steps: int,
-    trigger_distance: int,
+    safety_distance: int,
+    commit_distance: int,
+    stop_deception_after: int,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def attacker_builder() -> DistanceSwitchAttacker:
-            return DistanceSwitchAttacker(
-                trigger_distance=trigger_distance,
-                greater=StupidAttacker(PursueAttacker(), stupidity=stupidity),
-                lesser=EvadeAttacker(),
+        def attacker_builder() -> DeceptiveAttacker:
+            return DeceptiveAttacker(
+                safety_distance=safety_distance,
+                commit_distance=commit_distance,
+                stupidity=stupidity,
+                stop_deception_after=stop_deception_after,
             )
 
         if capture_video and idx == 0:
@@ -137,7 +143,7 @@ def make_env(
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
-                f"videos/{run_name}",
+                f"results/videos/{run_name}",
                 episode_trigger=lambda id: id % capture_interval == 0,
                 fps=1,
             )
@@ -224,9 +230,9 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
             mode="offline",
-            dir="wandb",
+            dir="results/wandb",
         )
-    writer = SummaryWriter(f"runs/{run_name}")
+    writer = SummaryWriter(f"results/runs/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s"
@@ -256,7 +262,9 @@ if __name__ == "__main__":
                 # preview_steps=args.preview_steps,
                 distance_reward_coeff=args.distance_reward_coeff,
                 max_steps=args.max_steps,
-                trigger_distance=args.trigger_distance,
+                safety_distance=args.safety_distance,
+                commit_distance=args.commit_distance,
+                stop_deception_after=args.stop_deception_after,
             )
             for i in range(args.num_envs)
         ],
@@ -468,7 +476,9 @@ if __name__ == "__main__":
                 "global_step": global_step,
                 "args": vars(args),
             }
-            torch.save(checkpoint, f"checkpoints/{run_name}/iter_{iteration}.pt")
+            torch.save(
+                checkpoint, f"results/checkpoints/{run_name}/iter_{iteration}.pt"
+            )
 
     envs.close()
     writer.close()
