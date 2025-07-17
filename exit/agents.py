@@ -265,21 +265,21 @@ class SwitchAttacker(AttackerAgentBase):
     ) -> list[int]:
         # If `self._true` and `self._false` have a mutual action, prefer that.
         # Reset peek to ensure we are getting the immediate next action peek.
-        self.reset_peek()
-        true_candidates = self._true.peek_action(observation=observation)
-        false_candidates = self._false.peek_action(observation=observation)
-        # Reset peek again to ensure the next call to `peek_action()` will return the immediate next action peek.
-        self.reset_peek()
-        mutual_candidates: list[int] = []
-        for candidate in true_candidates:
-            if candidate in false_candidates:
-                mutual_candidates.append(candidate)
-        if len(mutual_candidates) > 0:
-            if self._condition(observation, False):
-                _ = self._true.get_action(observation=observation)
-            else:
-                _ = self._false.get_action(observation=observation)
-            return mutual_candidates
+        # self.reset_peek()
+        # true_candidates = self._true.peek_action(observation=observation)
+        # false_candidates = self._false.peek_action(observation=observation)
+        # # Reset peek again to ensure the next call to `peek_action()` will return the immediate next action peek.
+        # self.reset_peek()
+        # mutual_candidates: list[int] = []
+        # for candidate in true_candidates:
+        #     if candidate in false_candidates:
+        #         mutual_candidates.append(candidate)
+        # if len(mutual_candidates) > 0:
+        #     if self._condition(observation, False):
+        #         _ = self._true.get_action(observation=observation)
+        #     else:
+        #         _ = self._false.get_action(observation=observation)
+        #     return mutual_candidates
         if self._condition(observation, False):
             return self._true.get_action(observation=observation)
         return self._false.get_action(observation=observation)
