@@ -239,7 +239,7 @@ if __name__ == "__main__":
         % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
     if args.checkpoint:
-        os.makedirs(f"checkpoints/{run_name}", exist_ok=True)
+        os.makedirs(f"results/checkpoints/{run_name}", exist_ok=True)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
