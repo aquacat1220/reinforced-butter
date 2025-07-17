@@ -29,7 +29,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_deceptive_attacker_stacked_observation"
+    exp_name: str = "exit_env_deceptive_attacker_stacked_observation_norandom"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -64,7 +64,7 @@ class Args:
     """attacker will stop deception after `stop_deception_after` steps"""
     history_length: int = 2
     """length of the stacked history"""
-    random_map: bool = False
+    random_map: bool = True
     """whether to randomize map layout"""
 
     # Algorithm specific arguments

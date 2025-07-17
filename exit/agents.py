@@ -471,9 +471,9 @@ class DeceptiveAttacker(TimeSwitchAttacker):
                 stupidity=stupidity,
                 target=EXIT,
             ),
-            false=DecisiveNaiveAttacker(
+            # Don't be decisive at a decoy.
+            false=NaiveAttacker(
                 safety_distance=safety_distance,
-                commit_distance=commit_distance,
                 stupidity=stupidity,
                 target=DECOY,
             ),
