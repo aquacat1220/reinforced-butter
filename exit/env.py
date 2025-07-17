@@ -63,6 +63,7 @@ class ExitEnv(
     def __init__(
         self,
         render_mode: str = "rgb_array",
+        random_map: bool = True,
         distance_reward_coeff: float = 0.1,
         max_steps: int = 256,
     ):
@@ -73,7 +74,7 @@ class ExitEnv(
         self.render_mode = render_mode
         self._distance_reward_coeff = distance_reward_coeff
         self._max_steps = max_steps
-        self._core = ExitCore()
+        self._core = ExitCore(random_map=random_map)
 
     def _name_to_agent_type(self, agent_name: str) -> AgentType | None:
         if agent_name == self.attacker_name:

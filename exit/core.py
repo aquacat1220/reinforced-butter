@@ -34,25 +34,25 @@ TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
     ]
 )
-# TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
-#     [
-#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-#         [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
-#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, DEFENDER, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
-#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-#         [WALL, EXIT, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, DECOY, WALL],
-#         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
-#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL, WALL, WALL, WALL, WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
-#         [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
-#         [WALL, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, WALL],
-#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-#         [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
-#         [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
-#         [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, ATTACKER, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
-#         [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
-#     ]
-# )
+PRESET: np.ndarray[Any, np.dtype[np.int8]] = np.array(
+    [
+        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+        [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
+        [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+        [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, DEFENDER, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+        [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+        [WALL, EXIT, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, EXIT, WALL],
+        [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
+        [WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL, WALL, WALL, WALL, WALL, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+        [WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, WALL, NONE, WALL, WALL, WALL, WALL, NONE, WALL],
+        [WALL, NONE, WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL, NONE, WALL],
+        [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+        [WALL, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, WALL],
+        [WALL, NONE, WALL, NONE, WALL, NONE, WALL, WALL, WALL, WALL, WALL, WALL, WALL, NONE, WALL, NONE, WALL, NONE, WALL],
+        [WALL, NONE, NONE, NONE, WALL, NONE, NONE, NONE, NONE, ATTACKER, NONE, NONE, NONE, NONE, WALL, NONE, NONE, NONE, WALL],
+        [WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL, WALL],
+    ]
+)
 
 # TEMPLATE: np.ndarray[Any, np.dtype[np.int8]] = np.array(
 #     [
@@ -90,9 +90,10 @@ class AgentType(Enum):
 
 
 class ExitCore:
-    def __init__(self):
+    def __init__(self, random_map: bool = True):
         self.attacker: tuple[int, int] | None = None
         self.defender: tuple[int, int] | None = None
+        self._random_map = random_map
 
     def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
         """
@@ -144,21 +145,29 @@ class ExitCore:
 
     def reset(self, seed: int | None = None):
         self._rng = np.random.default_rng(seed)
-        self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
-        exit_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
-        self.map[exit_pos] ^= EXIT
-        decoy_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
-        self.map[decoy_pos] ^= DECOY
-        attacker_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
-        self.map[attacker_pos] ^= ATTACKER
-        self.attacker = attacker_pos
-        defender_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
-        self.map[defender_pos] ^= DEFENDER
-        self.defender = defender_pos
-        # attacker_pos = np.argwhere(self.map & ATTACKER)[0]
-        # self.attacker = (attacker_pos[0], attacker_pos[1])
-        # defender_pos = np.argwhere(self.map & DEFENDER)[0]
-        # self.defender = (defender_pos[0], defender_pos[1])
+        if not self._random_map:
+            self.map: np.ndarray[Any, np.dtype[np.int8]] = PRESET.copy()
+            attacker_pos = np.argwhere(self.map & ATTACKER)[0]
+            self.attacker = (attacker_pos[0], attacker_pos[1])
+            defender_pos = np.argwhere(self.map & DEFENDER)[0]
+            self.defender = (defender_pos[0], defender_pos[1])
+            # `PRESET` has two exits in the map.
+            exit_poss = np.argwhere(self.map & EXIT)
+            # Convert one of them into a decoy.
+            decoy_pos = self._rng.choice(exit_poss)
+            self.map[decoy_pos] ^= EXIT | DECOY
+        else:
+            self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
+            exit_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+            self.map[exit_pos] ^= EXIT
+            decoy_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+            self.map[decoy_pos] ^= DECOY
+            attacker_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+            self.map[attacker_pos] ^= ATTACKER
+            self.attacker = attacker_pos
+            defender_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
+            self.map[defender_pos] ^= DEFENDER
+            self.defender = defender_pos
         self.events: list[Event] = []
         self.terminated: bool = False
 
