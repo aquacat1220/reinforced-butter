@@ -18,7 +18,7 @@ from exit import (
     ExitEnv,
     GymWrapper,
     StupidAttacker,
-    NaiveExitAttacker,
+    PursueAttacker,
     DistanceSwitchAttacker,
     EvadeAttacker,
     StripWrapper,
@@ -121,7 +121,7 @@ def make_env(
         def attacker_builder() -> DistanceSwitchAttacker:
             return DistanceSwitchAttacker(
                 trigger_distance=trigger_distance,
-                greater=StupidAttacker(NaiveExitAttacker(), stupidity=stupidity),
+                greater=StupidAttacker(PursueAttacker(), stupidity=stupidity),
                 lesser=EvadeAttacker(),
             )
 

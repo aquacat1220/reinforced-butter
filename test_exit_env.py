@@ -5,10 +5,19 @@ from exit import (
     DOWN,
     LEFT,
     RIGHT,
-    StupidAttacker,
-    NaiveExitAttacker,
+    DEFENDER,
+    AttackerAgentBase,
+    UserAttacker,
+    IdleAttacker,
+    PursueAttacker,
     EvadeAttacker,
+    SwitchAttacker,
     DistanceSwitchAttacker,
+    TimeSwitchAttacker,
+    StupidAttacker,
+    NaiveAttacker,
+    DecisiveNaiveAttacker,
+    DeceptiveAttacker,
     GymWrapper,
     PartialObservabilityWrapper,
     StripWrapper,
@@ -18,12 +27,15 @@ from rich import print
 import numpy as np
 from PIL import Image
 
+
+def attacker_builder() -> AttackerAgentBase:
+    return DeceptiveAttacker(5, 3, 1, 30)
+
+
 env = ExitEnv(render_mode="rgb_array", random_map=False)
 env = GymWrapper(
     env,
-    lambda: DistanceSwitchAttacker(
-        5, StupidAttacker(NaiveExitAttacker(), stupidity=2), EvadeAttacker()
-    ),
+    attacker_builder,
 )
 # env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
 env = PartialObservabilityWrapper(env)

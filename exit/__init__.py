@@ -1,4 +1,4 @@
-from .core import STAY, UP, DOWN, LEFT, RIGHT
+from .core import STAY, UP, DOWN, LEFT, RIGHT, WALL, EXIT, DECOY, ATTACKER, DEFENDER
 from .env import ExitEnv
 from .wrappers import (
     GymWrapper,
@@ -7,11 +7,16 @@ from .wrappers import (
     FrameStackWrapper,
 )
 from .agents import (
+    AttackerAgentBase,
+    UserAttacker,
     IdleAttacker,
-    NaiveExitAttacker,
-    StupidAttacker,
+    PursueAttacker,
     EvadeAttacker,
     SwitchAttacker,
     DistanceSwitchAttacker,
-    UserAttacker,
+    TimeSwitchAttacker,
+    StupidAttacker,
+    NaiveAttacker,
+    DecisiveNaiveAttacker,
+    DeceptiveAttacker,
 )
