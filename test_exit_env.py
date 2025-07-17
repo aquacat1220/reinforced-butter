@@ -18,7 +18,7 @@ from rich import print
 import numpy as np
 from PIL import Image
 
-env = ExitEnv(render_mode="rgb_array")
+env = ExitEnv(render_mode="rgb_array", random_map=False)
 env = GymWrapper(
     env,
     lambda: DistanceSwitchAttacker(
@@ -27,9 +27,10 @@ env = GymWrapper(
 )
 # env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
 env = PartialObservabilityWrapper(env)
+env = FrameStackWrapper(env)
 env = StripWrapper(env)
 # observation, _ = env.reset()
-observation, _ = env.reset(seed=1221)
+observation, _ = env.reset(seed=1220)
 is_done: bool = False
 
 print(observation)
