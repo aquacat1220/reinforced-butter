@@ -19,6 +19,8 @@ from exit import (
     GymWrapper,
     StupidAttacker,
     NaiveExitAttacker,
+    DistanceSwitchAttacker,
+    EvadeAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
 )
@@ -26,7 +28,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_randomized_env"
+    exp_name: str = "exit_env_switching_attacker"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -42,7 +44,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    capture_interval: int = 100
+    capture_interval: int = 2000
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
@@ -53,6 +55,8 @@ class Args:
     distance_reward_coeff: float = 0.1
     """whether to use distance based rewards"""
     max_steps: int = 256
+    trigger_distance: int = 5
+    """trigger distance for distance switch attacker"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -110,11 +114,16 @@ def make_env(
     # preview_steps: int,
     distance_reward_coeff: float,
     max_steps: int,
+    trigger_distance: int,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def attacker_builder() -> StupidAttacker:
-            return StupidAttacker(NaiveExitAttacker(), stupidity=stupidity)
+        def attacker_builder() -> DistanceSwitchAttacker:
+            return DistanceSwitchAttacker(
+                trigger_distance=trigger_distance,
+                greater=StupidAttacker(NaiveExitAttacker(), stupidity=stupidity),
+                lesser=EvadeAttacker(),
+            )
 
         if capture_video and idx == 0:
             # env = gym.make(env_id, render_mode="rgb_array")
@@ -243,6 +252,7 @@ if __name__ == "__main__":
                 # preview_steps=args.preview_steps,
                 distance_reward_coeff=args.distance_reward_coeff,
                 max_steps=args.max_steps,
+                trigger_distance=args.trigger_distance,
             )
             for i in range(args.num_envs)
         ],
