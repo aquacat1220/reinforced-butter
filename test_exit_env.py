@@ -29,7 +29,7 @@ from PIL import Image
 
 
 def attacker_builder() -> AttackerAgentBase:
-    return DeceptiveAttacker(5, 3, 1, 30)
+    return DeceptiveAttacker(3, 1, 1, 30)
 
 
 env = ExitEnv(render_mode="rgb_array", random_map=False)

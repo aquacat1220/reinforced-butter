@@ -139,9 +139,10 @@ class IdleAttacker(AttackerAgentBase):
 class PursueAttacker(AttackerAgentBase):
     """Charges straight to the target."""
 
-    def __init__(self, target: np.int8 = EXIT):
+    def __init__(self, target: np.int8 = EXIT, ignore_defender: bool = True):
         self._grid: Grid | None = None
         self._target = target
+        self._ignore_defender = ignore_defender
 
     def get_action(
         self,
@@ -152,6 +153,7 @@ class PursueAttacker(AttackerAgentBase):
             self._grid = Grid(matrix=1 - walls)
 
         target_pos: tuple[int, int] = get_target_position(observation, self._target)
+        defender_pos: tuple[int, int] = get_target_position(observation, DEFENDER)
 
         attacker_pos = observation[1]
 
@@ -172,7 +174,16 @@ class PursueAttacker(AttackerAgentBase):
                 continue
             if walls[candidate_position]:
                 continue
+            # Temporarily consider the defender to be an obstacle for pathfinding.
+            # And also raise the weights of defender-reachable tiles.
+            defender_node = self._grid.node(x=defender_pos[1], y=defender_pos[0])  # type: ignore
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 100
+            defender_node.walkable = False
             distance = len(find_path(self._grid, candidate_position, target_pos))
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 1
+            defender_node.walkable = True
             if distance < min_distance:
                 min_candidates = [candidate_action]
                 min_distance = distance
@@ -317,7 +328,7 @@ class DistanceSwitchAttacker(SwitchAttacker):
         self,
         trigger_distance: int,
         target: np.int8,
-        greater: AttackerAgentBase,
+        greater_or_eq: AttackerAgentBase,
         lesser: AttackerAgentBase,
     ):
         self._trigger_distance = trigger_distance
@@ -335,7 +346,9 @@ class DistanceSwitchAttacker(SwitchAttacker):
             distance = distance_between(self._grid, observation, ATTACKER, self._target)
             return distance >= self._trigger_distance
 
-        super().__init__(condition=_distance_condition, true=greater, false=lesser)
+        super().__init__(
+            condition=_distance_condition, true=greater_or_eq, false=lesser
+        )
 
 
 class TimeSwitchAttacker(SwitchAttacker):
@@ -418,12 +431,19 @@ class NaiveAttacker(DistanceSwitchAttacker):
     """
 
     def __init__(
-        self, safety_distance: int = 5, stupidity: int = 2, target: np.int8 = EXIT
+        self,
+        min_safe_distance: int = 5,
+        stupidity: int = 2,
+        target: np.int8 = EXIT,
+        ignore_defender: bool = False,
     ):
         super().__init__(
-            trigger_distance=safety_distance,
+            trigger_distance=min_safe_distance,
             target=DEFENDER,
-            greater=StupidAttacker(PursueAttacker(target=target), stupidity=stupidity),
+            greater_or_eq=StupidAttacker(
+                PursueAttacker(target=target, ignore_defender=ignore_defender),
+                stupidity=stupidity,
+            ),
             lesser=EvadeAttacker(target=DEFENDER),
         )
 
@@ -436,18 +456,25 @@ class DecisiveNaiveAttacker(DistanceSwitchAttacker):
 
     def __init__(
         self,
-        safety_distance: int = 5,
-        commit_distance: int = 3,
+        min_safe_distance: int = 5,
+        max_commit_distance: int = 3,
         stupidity: int = 2,
         target: np.int8 = EXIT,
+        ignore_defender: bool = False,
     ):
         super().__init__(
-            trigger_distance=commit_distance,
+            trigger_distance=max_commit_distance,
             target=target,
-            greater=NaiveAttacker(
-                safety_distance=safety_distance, stupidity=stupidity, target=target
+            greater_or_eq=NaiveAttacker(
+                min_safe_distance=min_safe_distance,
+                stupidity=stupidity,
+                target=target,
+                ignore_defender=ignore_defender,
             ),
-            lesser=StupidAttacker(PursueAttacker(target=target), stupidity=stupidity),
+            lesser=StupidAttacker(
+                PursueAttacker(target=target, ignore_defender=False),
+                stupidity=stupidity,
+            ),
         )
 
 
@@ -458,23 +485,26 @@ class DeceptiveAttacker(TimeSwitchAttacker):
 
     def __init__(
         self,
-        safety_distance: int = 5,
-        commit_distance: int = 3,
+        min_safe_distance: int = 5,
+        max_commit_distance: int = 3,
         stupidity: int = 2,
+        ignore_defender: bool = False,
         stop_deception_after: int = 32,
     ):
         super().__init__(
             true_after=stop_deception_after,
             true=DecisiveNaiveAttacker(
-                safety_distance=safety_distance,
-                commit_distance=commit_distance,
+                min_safe_distance=min_safe_distance,
+                max_commit_distance=max_commit_distance,
                 stupidity=stupidity,
                 target=EXIT,
+                ignore_defender=ignore_defender,
             ),
             # Don't be decisive at a decoy.
             false=NaiveAttacker(
-                safety_distance=safety_distance,
+                min_safe_distance=min_safe_distance,
                 stupidity=stupidity,
                 target=DECOY,
+                ignore_defender=ignore_defender,
             ),
         )

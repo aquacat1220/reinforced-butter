@@ -29,7 +29,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_deceptive_attacker_stacked_observation_norandom"
+    exp_name: str = "exit_env_deceptive_attacker_noignore"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -56,16 +56,18 @@ class Args:
     distance_reward_coeff: float = 0.1
     """whether to use distance based rewards"""
     max_steps: int = 256
-    safety_distance: int = 5
-    """safety distance the attacker tries to maintain with the defender"""
-    commit_distance: int = 3
-    """the distance the attacker will decide to ignore the defender and commit to its goal"""
+    min_safe_distance: int = 3
+    """the minimum distance the attacker considers to be safe to get closer to the defender"""
+    max_commit_distance: int = 1
+    """the maximum distance the attacker will commit to its target, ignoring the defender"""
     stop_deception_after: int = 32
     """attacker will stop deception after `stop_deception_after` steps"""
     history_length: int = 2
     """length of the stacked history"""
     random_map: bool = True
     """whether to randomize map layout"""
+    ignore_defender: bool = False
+    """whether to ignore defender while attacker pathfinding"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -123,19 +125,21 @@ def make_env(
     # preview_steps: int,
     distance_reward_coeff: float,
     max_steps: int,
-    safety_distance: int,
-    commit_distance: int,
+    min_safe_distance: int,
+    max_commit_distance: int,
     stop_deception_after: int,
     history_length: int,
     random_map: bool,
+    ignore_defender: bool,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
         def attacker_builder() -> DeceptiveAttacker:
             return DeceptiveAttacker(
-                safety_distance=safety_distance,
-                commit_distance=commit_distance,
+                min_safe_distance=min_safe_distance,
+                max_commit_distance=max_commit_distance,
                 stupidity=stupidity,
+                ignore_defender=ignore_defender,
                 stop_deception_after=stop_deception_after,
             )
 
@@ -274,11 +278,12 @@ if __name__ == "__main__":
                 # preview_steps=args.preview_steps,
                 distance_reward_coeff=args.distance_reward_coeff,
                 max_steps=args.max_steps,
-                safety_distance=args.safety_distance,
-                commit_distance=args.commit_distance,
+                min_safe_distance=args.min_safe_distance,
+                max_commit_distance=args.max_commit_distance,
                 stop_deception_after=args.stop_deception_after,
                 history_length=args.history_length,
                 random_map=args.random_map,
+                ignore_defender=args.ignore_defender,
             )
             for i in range(args.num_envs)
         ],
