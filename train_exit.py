@@ -23,12 +23,13 @@ from exit import (
     EvadeAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
+    FrameStackWrapper,
 )
 
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_deceptive_attacker"
+    exp_name: str = "exit_env_deceptive_attacker_stacked_observation"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -60,6 +61,11 @@ class Args:
     commit_distance: int = 3
     """the distance the attacker will decide to ignore the defender and commit to its goal"""
     stop_deception_after: int = 32
+    """attacker will stop deception after `stop_deception_after` steps"""
+    history_length: int = 2
+    """length of the stacked history"""
+    random_map: bool = False
+    """whether to randomize map layout"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -120,6 +126,8 @@ def make_env(
     safety_distance: int,
     commit_distance: int,
     stop_deception_after: int,
+    history_length: int,
+    random_map: bool,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
@@ -135,11 +143,13 @@ def make_env(
             # env = gym.make(env_id, render_mode="rgb_array")
             env = ExitEnv(
                 render_mode="rgb_array",
+                random_map=random_map,
                 distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=attacker_builder)
             env = PartialObservabilityWrapper(env)
+            env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
@@ -151,11 +161,13 @@ def make_env(
             # env = gym.make(env_id)
             env = ExitEnv(
                 render_mode="rgb_array",
+                random_map=random_map,
                 distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=attacker_builder)
             env = PartialObservabilityWrapper(env)
+            env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
@@ -265,6 +277,8 @@ if __name__ == "__main__":
                 safety_distance=args.safety_distance,
                 commit_distance=args.commit_distance,
                 stop_deception_after=args.stop_deception_after,
+                history_length=args.history_length,
+                random_map=args.random_map,
             )
             for i in range(args.num_envs)
         ],
