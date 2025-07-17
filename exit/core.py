@@ -155,6 +155,7 @@ class ExitCore:
             exit_poss = np.argwhere(self.map & EXIT)
             # Convert one of them into a decoy.
             decoy_pos = self._rng.choice(exit_poss)
+            decoy_pos: tuple[int, int] = (decoy_pos[0], decoy_pos[1])
             self.map[decoy_pos] ^= EXIT | DECOY
         else:
             self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
