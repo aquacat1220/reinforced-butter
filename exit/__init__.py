@@ -8,4 +8,5 @@ from .agents import (
     EvadeAttacker,
     SwitchAttacker,
     DistanceSwitchAttacker,
+    UserAttacker,
 )

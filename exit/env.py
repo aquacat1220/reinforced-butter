@@ -227,7 +227,7 @@ class ExitEnv(
     def render(self) -> np.ndarray[Any, np.dtype[np.uint8]]:
         if self.render_mode == "rgb_array":
             return ExitEnv.render_observation_rgb(
-                self._get_observation()[self.defender_name]
+                self._get_observation()[self.defender_name][0]
             )
         else:
             raise Exception("Unreachable")
@@ -235,9 +235,9 @@ class ExitEnv(
     @classmethod
     def render_observation_rgb(
         cls,
-        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        observation: np.ndarray[Any, np.dtype[np.int8]],
     ) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        tiles = observation[0]
+        tiles = observation
         reconstructed_map = (
             tiles[WALL_IDX] * WALL
             + tiles[EXIT_IDX] * EXIT

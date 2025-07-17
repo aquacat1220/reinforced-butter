@@ -164,10 +164,14 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs):
+    def __init__(
+        self,
+        observation_space_shape: tuple[int, int, int],
+        action_space_shape: int,
+    ):
         super().__init__()
 
-        (C, H, W) = envs.single_observation_space.shape
+        (C, H, W) = observation_space_shape
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(C, 16, 3, stride=1)),
             nn.ReLU(),
@@ -179,10 +183,10 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64 * (H - 6) * (W - 6), 256)),
             nn.ReLU(),
         )
-        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        self.actor = layer_init(nn.Linear(256, action_space_shape), std=0.01)
         # self.actor = nn.Sequential(
         #     layer_init(nn.Linear(256, 64), std=0.01),
-        #     layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
+        #     layer_init(nn.Linear(64, action_space_shape), std=0.01),
         # )
         self.critic = layer_init(nn.Linear(256, 1), std=1)
         # self.critic = nn.Sequential(
@@ -261,7 +265,10 @@ if __name__ == "__main__":
         envs.single_action_space, gym.spaces.Discrete
     ), "only discrete action space is supported"
 
-    agent = Agent(envs).to(device)
+    agent = Agent(
+        observation_space_shape=envs.single_observation_space.shape,
+        action_space_shape=envs.single_action_space.n,
+    ).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup

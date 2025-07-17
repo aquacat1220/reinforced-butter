@@ -2,8 +2,17 @@ import numpy as np
 from typing import Any, Callable
 from abc import ABC, abstractmethod
 from pathfinding.core.grid import Grid  # type: ignore
+from PIL import Image
 from .core import STAY, UP, DOWN, LEFT, RIGHT, HEIGHT, WIDTH
-from .env import find_path, WALL_IDX, DECOY_IDX, EXIT_IDX, DEFENDER_IDX, ATTACKER_IDX
+from .env import (
+    find_path,
+    WALL_IDX,
+    DECOY_IDX,
+    EXIT_IDX,
+    DEFENDER_IDX,
+    ATTACKER_IDX,
+    ExitEnv,
+)
 
 DEFAULT_STUPIDITY = 3
 
@@ -22,6 +31,38 @@ class AttackerAgentBase(ABC):
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
         return self.get_action(observation=observation)
+
+
+class UserAttacker(AttackerAgentBase):
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        while True:
+            Image.fromarray(ExitEnv.render_observation_rgb(observation[0])).save(
+                "observation_user_attacker.png"
+            )
+            action = input("Select action for `UserAttacker`: ")
+
+            if action == "s":
+                action = STAY
+            elif action == "u":
+                action = UP
+            elif action == "d":
+                action = DOWN
+            elif action == "l":
+                action = LEFT
+            elif action == "r":
+                action = RIGHT
+            else:
+                continue
+            return action
+
+    def get_mock_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        return STAY
 
 
 class IdleAttacker(AttackerAgentBase):

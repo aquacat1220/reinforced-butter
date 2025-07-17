@@ -77,7 +77,9 @@ class GymWrapper(
         observations, infos = self.env.reset(seed, options)
 
         self._attacker = self._attacker_builder()
-        self._attacker_next_action: int = STAY
+        self._attacker_next_action = self._attacker.get_action(
+            observations[self.env.attacker_name]
+        )
 
         info = infos[self.env.defender_name]
         info["gym_wrapper_inner_observations"] = observations

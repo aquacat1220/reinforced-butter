@@ -4,5 +4,4 @@ runs/
 videos/
 wandb/
 .vscode/
-observation.png
-observation_exit.png
+observation*
