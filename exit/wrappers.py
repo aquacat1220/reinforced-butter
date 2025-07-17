@@ -1,10 +1,10 @@
-from gymnasium import Env, ObservationWrapper, Wrapper
+from gymnasium import Env, ObservationWrapper
 import numpy as np
 from typing import Any, Callable
 from gymnasium.spaces import MultiBinary, Tuple, Discrete
 from .env import ExitEnv
 from .agents import AttackerAgentBase
-from .core import HEIGHT, WIDTH, STAY, UP, DOWN, LEFT, RIGHT
+from .core import HEIGHT, WIDTH
 from .env import WALL_IDX, EXIT_IDX, DECOY_IDX, ATTACKER_IDX, DEFENDER_IDX
 
 
@@ -367,3 +367,43 @@ class PartialObservabilityWrapper(
         stack[3] = observation[0][DEFENDER_IDX]
         stack_: list[np.ndarray[Any, np.dtype[np.int8]]] = stack  # type: ignore
         return (np.stack(stack_, axis=0), observation[1])
+
+
+class FrameStackWrapper(
+    ObservationWrapper[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        np.int64,
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ]
+):
+    """
+    Wrapper to stack obseravtions of multiple past frames. Stacks only the mutable parts (attacker/defender) to save space.
+    """
+
+    def __init__(
+        self,
+        env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
+        history_length: int = 2,
+    ):
+        super().__init__(env)
+        self._history_length: int = history_length
+        self._history: list[np.ndarray[Any, np.dtype[np.int8]]] = []
+        self.observation_space = Tuple(
+            (
+                MultiBinary((4 + 2 * self._history_length, HEIGHT, WIDTH)),
+                Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
+            )
+        )
+
+    def observation(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]:
+        mutables = observation[0][2:4]
+        if len(self._history) == 0:
+            self._history = [mutables for _ in range(self._history_length)]
+        assert len(self._history) == self._history_length
+
+        concated = np.concatenate([observation[0]] + self._history, axis=0)
+        self._history = [mutables] + self._history[:-1]
+        return concated, observation[1]

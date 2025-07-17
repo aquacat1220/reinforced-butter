@@ -12,6 +12,7 @@ from exit import (
     GymWrapper,
     PartialObservabilityWrapper,
     StripWrapper,
+    FrameStackWrapper,
 )
 from rich import print
 import numpy as np
@@ -53,6 +54,7 @@ while True:
         continue
     observation, reward, terminated, truncated, _ = env.step(np.int64(action))
     print(observation)
+    print(np.all(observation[3] == observation[5]))
     print("Reward: ", reward)
     image = Image.fromarray(env.render())  # type: ignore
     image.save("observation_exit.png")
