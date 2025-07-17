@@ -45,7 +45,8 @@ class GymWrapper(
         dict[Any, Any],
     ]:
         actions: dict[str, int] = {}
-        actions[self.env.attacker_name] = self._attacker_next_action
+        attacker_action_candidates = self._attacker_next_action
+        actions[self.env.attacker_name] = self._rng.choice(attacker_action_candidates)
         actions[self.env.defender_name] = int(action)
         observations, rewards, terminations, truncations, infos = self.env.step(actions)
 
@@ -74,6 +75,7 @@ class GymWrapper(
     ) -> tuple[
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], dict[Any, Any]
     ]:
+        self._rng: np.random.Generator = np.random.default_rng(seed)
         observations, infos = self.env.reset(seed, options)
 
         self._attacker = self._attacker_builder()

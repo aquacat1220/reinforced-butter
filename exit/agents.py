@@ -7,10 +7,8 @@ from .core import STAY, UP, DOWN, LEFT, RIGHT, HEIGHT, WIDTH
 from .env import (
     find_path,
     WALL_IDX,
-    DECOY_IDX,
     EXIT_IDX,
     DEFENDER_IDX,
-    ATTACKER_IDX,
     ExitEnv,
 )
 
@@ -22,22 +20,26 @@ class AttackerAgentBase(ABC):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
-        return STAY
+    ) -> list[int]:
+        return [STAY, UP, DOWN, LEFT, RIGHT]
 
     @abstractmethod
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
-        return self.get_action(observation=observation)
+    ) -> list[int]:
+        return [STAY, UP, DOWN, LEFT, RIGHT]
+
+    @abstractmethod
+    def reset_peek(self):
+        return
 
 
 class UserAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         while True:
             Image.fromarray(ExitEnv.render_observation_rgb(observation[0])).save(
                 "observation_user_attacker.png"
@@ -56,27 +58,33 @@ class UserAttacker(AttackerAgentBase):
                 action = RIGHT
             else:
                 continue
-            return action
+            return [action]
 
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
-        return STAY
+    ) -> list[int]:
+        return self.get_action(observation=observation)
+
+    def reset_peek(self):
+        return
 
 
 class IdleAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
-        return STAY
+    ) -> list[int]:
+        return [STAY]
 
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         return self.get_action(observation=observation)
+
+    def reset_peek(self):
+        return
 
 
 class NaiveExitAttacker(AttackerAgentBase):
@@ -88,7 +96,7 @@ class NaiveExitAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -97,21 +105,42 @@ class NaiveExitAttacker(AttackerAgentBase):
         exit_pos = np.argwhere(exits)[0]
         exit_pos: tuple[int, int] = (exit_pos[0], exit_pos[1])
 
-        actions = find_path(
-            self._grid,
-            observation[1],
-            exit_pos,
-        )
+        attacker_pos = observation[1]
 
-        if len(actions) == 0:
-            return STAY
-        return actions[0]
+        candidate_positions: list[tuple[tuple[int, int], int]] = [
+            (attacker_pos, STAY),
+            ((attacker_pos[0] - 1, attacker_pos[1]), UP),
+            ((attacker_pos[0] + 1, attacker_pos[1]), DOWN),
+            ((attacker_pos[0], attacker_pos[1] - 1), LEFT),
+            ((attacker_pos[0], attacker_pos[1] + 1), RIGHT),
+        ]
 
-    def get_mock_action(
+        min_distance: int = 99999
+        min_candidates: list[int] = []
+        for candidate_position, candidate_action in candidate_positions:
+            if candidate_position[0] < 0 or candidate_position[0] >= HEIGHT:
+                continue
+            if candidate_position[1] < 0 or candidate_position[1] >= WIDTH:
+                continue
+            if walls[candidate_position]:
+                continue
+            distance = len(find_path(self._grid, candidate_position, exit_pos))
+            if distance < min_distance:
+                min_candidates = [candidate_action]
+                min_distance = distance
+            elif distance == min_distance:
+                min_candidates.append(candidate_action)
+
+        return min_candidates
+
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         return self.get_action(observation=observation)
+
+    def reset_peek(self):
+        return
 
 
 class EvadeAttacker(AttackerAgentBase):
@@ -121,7 +150,7 @@ class EvadeAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -156,13 +185,16 @@ class EvadeAttacker(AttackerAgentBase):
             elif distance == max_distance:
                 max_candidates.append(candidate_action)
 
-        return np.random.choice(max_candidates)
+        return max_candidates
 
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         return self.get_action(observation=observation)
+
+    def reset_peek(self):
+        return
 
 
 class SwitchAttacker(AttackerAgentBase):
@@ -181,18 +213,54 @@ class SwitchAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
+        # If `self._true` and `self._false` have a mutual action, prefer that.
+        # Reset peek to ensure we are getting the immediate next action peek.
+        self.reset_peek()
+        true_candidates = self._true.peek_action(observation=observation)
+        false_candidates = self._false.peek_action(observation=observation)
+        # Reset peek again to ensure the next call to `peek_action()` will return the immediate next action peek.
+        self.reset_peek()
+        mutual_candidates: list[int] = []
+        for candidate in true_candidates:
+            if candidate in false_candidates:
+                mutual_candidates.append(candidate)
+        if len(mutual_candidates) > 0:
+            if self._condition(observation):
+                _ = self._true.get_action(observation=observation)
+            else:
+                _ = self._false.get_action(observation=observation)
+            return mutual_candidates
         if self._condition(observation):
             return self._true.get_action(observation=observation)
         return self._false.get_action(observation=observation)
 
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
+        true_candidates = self._true.peek_action(observation=observation)
+        false_candidates = self._false.peek_action(observation=observation)
+
         if self._condition(observation):
-            return self._true.get_mock_action(observation=observation)
-        return self._false.get_mock_action(observation=observation)
+            self._false.reset_peek()
+        else:
+            self._true.reset_peek()
+
+        mutual_candidates: list[int] = []
+        for candidate in true_candidates:
+            if candidate in false_candidates:
+                mutual_candidates.append(candidate)
+
+        if len(mutual_candidates) > 0:
+            return mutual_candidates
+        if self._condition(observation):
+            return true_candidates
+        return false_candidates
+
+    def reset_peek(self):
+        self._true.reset_peek()
+        self._false.reset_peek()
 
 
 class DistanceSwitchAttacker(SwitchAttacker):
@@ -223,23 +291,6 @@ class DistanceSwitchAttacker(SwitchAttacker):
 
         super().__init__(condition=_distance_condition, true=greater, false=lesser)
 
-    # def _condition(
-    #     self,
-    #     observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    # ) -> bool:
-    #     walls = observation[0][WALL_IDX]
-    #     if self._grid is None:
-    #         self._grid = Grid(matrix=1 - walls)
-
-    #     defenders = observation[0][DEFENDER_IDX]
-    #     defender_pos = np.argwhere(defenders)[0]
-    #     defender_pos: tuple[int, int] = (defender_pos[0], defender_pos[1])
-
-    #     attacker_pos = observation[1]
-
-    #     distance = len(find_path(self._grid, defender_pos, attacker_pos))
-    #     return distance >= self._trigger_distance
-
 
 class StupidAttacker(AttackerAgentBase):
     def __init__(self, inner: AttackerAgentBase, stupidity: int):
@@ -251,21 +302,25 @@ class StupidAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         if self._counter % self._stupidity == 0:
             self._counter += 1
             self._mock_counter = self._counter
             return self._inner.get_action(observation=observation)
         self._counter += 1
-        self._mock_counter = self._counter
-        return STAY
+        self.reset_peek()
+        return [STAY]
 
-    def get_mock_action(
+    def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> int:
+    ) -> list[int]:
         if self._mock_counter % self._stupidity == 0:
             self._mock_counter += 1
-            return self._inner.get_mock_action(observation=observation)
+            return self._inner.peek_action(observation=observation)
         self._mock_counter += 1
-        return STAY
+        return [STAY]
+
+    def reset_peek(self):
+        self._mock_counter = self._counter
+        self._inner.reset_peek()
