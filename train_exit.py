@@ -24,6 +24,7 @@ from exit import (
     StripWrapper,
     PartialObservabilityWrapper,
     FrameStackWrapper,
+    DeterministicResetWrapper,
 )
 
 
@@ -155,6 +156,7 @@ def make_env(
             env = PartialObservabilityWrapper(env)
             env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
+            env = DeterministicResetWrapper(env)
             env = gym.wrappers.RecordVideo(
                 env,
                 f"results/videos/{run_name}",
@@ -173,6 +175,7 @@ def make_env(
             env = PartialObservabilityWrapper(env)
             env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
+            env = DeterministicResetWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
 

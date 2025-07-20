@@ -1,6 +1,6 @@
-from gymnasium import Env, ObservationWrapper
+from gymnasium import Env, ObservationWrapper, Wrapper
 import numpy as np
-from typing import Any, Callable
+from typing import Any, Callable, Generic, TypeVar
 from gymnasium.spaces import MultiBinary, Tuple, Discrete
 from .env import ExitEnv
 from .agents import AttackerAgentBase
@@ -409,3 +409,53 @@ class FrameStackWrapper(
         concated = np.concatenate([observation[0]] + self._history, axis=0)
         self._history = [mutables] + self._history[:-1]
         return concated, observation[1]
+
+
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
+
+
+class DeterministicResetWrapper(
+    Wrapper[ObsType, ActType, ObsType, ActType],
+    Generic[ObsType, ActType],
+):
+    """Wrapper to support deterministic resets even when `seed == None` through the use of `options["increment_seed_by"]`."""
+
+    def __init__(self, env: Env[ObsType, ActType], is_enabled: bool = True):
+        super().__init__(env)
+        self._is_enabled = is_enabled
+        self._last_seed: int | None = None
+        self._increment_seed_by: int | None = None
+
+    def reset(  # type: ignore
+        self, seed: int | None = None, options: dict[Any, Any] | None = None
+    ) -> tuple[
+        ObsType,
+        dict[Any, Any],
+    ]:
+        increment_seed_by: int | None = None
+        if (options is not None) and ("increment_seed_by" in options):
+            increment_seed_by = options["increment_seed_by"]
+
+        if (seed is None) and (increment_seed_by is not None):
+            raise ValueError(
+                'key `"increment_seed_by"` can only be used in `options` with non-None `seed`.'
+            )
+
+        if seed is None:
+            if self._increment_seed_by is not None:
+                # `self._increment_seed_by` and `self._last_seed`'s None-ness are synced.
+                assert self._last_seed is not None
+                self._last_seed += self._increment_seed_by
+                return self.env.reset(seed=self._last_seed, options=options)
+            else:
+                return self.env.reset(seed=seed, options=options)
+        else:
+            if increment_seed_by is not None:
+                self._last_seed = seed
+                self._increment_seed_by = increment_seed_by
+                return self.env.reset(seed=self._last_seed, options=options)
+            else:
+                self._last_seed = None
+                self._increment_seed_by = None
+                return self.env.reset(seed=seed, options=options)

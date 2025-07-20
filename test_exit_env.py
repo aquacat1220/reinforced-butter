@@ -22,6 +22,7 @@ from exit import (
     PartialObservabilityWrapper,
     StripWrapper,
     FrameStackWrapper,
+    DeterministicResetWrapper,
 )
 from rich import print
 import numpy as np
@@ -41,14 +42,15 @@ env = GymWrapper(
 env = PartialObservabilityWrapper(env)
 env = FrameStackWrapper(env)
 env = StripWrapper(env)
+env = DeterministicResetWrapper(env)
 # observation, _ = env.reset()
-observation, _ = env.reset(seed=1220)
+observation, _ = env.reset(seed=1220, options={"increment_seed_by": 2})
 is_done: bool = False
 
-print(observation)
-image = Image.fromarray(env.render())  # type: ignore
-image.save("observation_exit.png")
 while True:
+    print(observation)
+    image = Image.fromarray(env.render())  # type: ignore
+    image.save("observation_exit.png")
     if is_done:
         print("Environment terminated.")
         break
@@ -63,12 +65,10 @@ while True:
         action = LEFT
     elif action == "r":
         action = RIGHT
+    elif action == "reset":
+        observation, _ = env.reset()
+        continue
     else:
         continue
     observation, reward, terminated, truncated, _ = env.step(np.int64(action))
-    print(observation)
-    print(np.all(observation[3] == observation[5]))
-    print("Reward: ", reward)
-    image = Image.fromarray(env.render())  # type: ignore
-    image.save("observation_exit.png")
     is_done = terminated or truncated

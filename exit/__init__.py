@@ -5,6 +5,7 @@ from .wrappers import (
     StripWrapper,
     PartialObservabilityWrapper,
     FrameStackWrapper,
+    DeterministicResetWrapper,
 )
 from .agents import (
     AttackerAgentBase,
