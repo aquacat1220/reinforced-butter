@@ -21,6 +21,7 @@ from exit import (
     PursueAttacker,
     DeceptiveAttacker,
     EvadeAttacker,
+    DecisiveNaiveAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
     FrameStackWrapper,
@@ -135,7 +136,15 @@ def make_env(
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def attacker_builder() -> DeceptiveAttacker:
+        def naive_attacker_builder() -> DecisiveNaiveAttacker:
+            return DecisiveNaiveAttacker(
+                min_safe_distance=min_safe_distance,
+                max_commit_distance=max_commit_distance,
+                stupidity=stupidity,
+                ignore_defender=ignore_defender,
+            )
+
+        def deceptive_attacker_builder() -> DeceptiveAttacker:
             return DeceptiveAttacker(
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
@@ -152,7 +161,7 @@ def make_env(
                 distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
-            env = GymWrapper(env, attacker_builder=attacker_builder)
+            env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
             env = PartialObservabilityWrapper(env)
             env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
@@ -171,7 +180,10 @@ def make_env(
                 distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
-            env = GymWrapper(env, attacker_builder=attacker_builder)
+            if idx % 2 == 0:
+                env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
+            else:
+                env = GymWrapper(env, attacker_builder=naive_attacker_builder)
             env = PartialObservabilityWrapper(env)
             env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
