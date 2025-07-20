@@ -421,9 +421,8 @@ class DeterministicResetWrapper(
 ):
     """Wrapper to support deterministic resets even when `seed == None` through the use of `options["increment_seed_by"]`."""
 
-    def __init__(self, env: Env[ObsType, ActType], is_enabled: bool = True):
+    def __init__(self, env: Env[ObsType, ActType]):
         super().__init__(env)
-        self._is_enabled = is_enabled
         self._last_seed: int | None = None
         self._increment_seed_by: int | None = None
 
