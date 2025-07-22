@@ -28,7 +28,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_lstm_testdrive_again5"
+    exp_name: str = "exit_env_lstm_5050"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -38,13 +38,13 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "ppo_exit"
+    wandb_project_name: str = "ppo_lstm_exit"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    capture_interval: int = 8
+    capture_interval: int = 2000
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
@@ -52,8 +52,8 @@ class Args:
     """how often `StupidPursueGhost`s move"""
     # preview_steps: int = 2
     # """number of steps to preview into the future"""
-    distance_reward_coeff: float = 0.1
-    """whether to use distance based rewards"""
+    att_def_distance_reward_coeff: float = 0.1
+    """reward for getting 1 tile closer to the attacker"""
     max_steps: int = 256
     min_safe_distance: int = 3
     """the minimum distance the attacker considers to be safe to get closer to the defender"""
@@ -67,6 +67,8 @@ class Args:
     """whether to randomize map layout"""
     ignore_defender: bool = False
     """whether to ignore defender while attacker pathfinding"""
+    att_exit_distance_reward_coeff: float = 0.15
+    """reward for making attacker 1 tile further away from the exit"""
 
     # Algorithm specific arguments
     # env_id: str = "CartPole-v1"
@@ -122,7 +124,7 @@ def make_env(
     run_name: str,
     stupidity: int,
     # preview_steps: int,
-    distance_reward_coeff: float,
+    att_def_distance_reward_coeff: float,
     max_steps: int,
     min_safe_distance: int,
     max_commit_distance: int,
@@ -130,6 +132,7 @@ def make_env(
     history_length: int,
     random_map: bool,
     ignore_defender: bool,
+    att_exit_distance_reward_coeff: float,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
@@ -155,7 +158,8 @@ def make_env(
             env = ExitEnv(
                 render_mode="rgb_array",
                 random_map=random_map,
-                distance_reward_coeff=distance_reward_coeff,
+                att_def_distance_reward_coeff=att_def_distance_reward_coeff,
+                att_exit_distance_reward_coeff=att_exit_distance_reward_coeff,
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
@@ -174,7 +178,8 @@ def make_env(
             env = ExitEnv(
                 render_mode="rgb_array",
                 random_map=random_map,
-                distance_reward_coeff=distance_reward_coeff,
+                att_def_distance_reward_coeff=att_def_distance_reward_coeff,
+                att_exit_distance_reward_coeff=att_exit_distance_reward_coeff,
                 max_steps=max_steps,
             )
             if idx % 2 == 0:
@@ -320,7 +325,7 @@ if __name__ == "__main__":
                 run_name=run_name,
                 stupidity=args.stupidity,
                 # preview_steps=args.preview_steps,
-                distance_reward_coeff=args.distance_reward_coeff,
+                att_def_distance_reward_coeff=args.att_def_distance_reward_coeff,
                 max_steps=args.max_steps,
                 min_safe_distance=args.min_safe_distance,
                 max_commit_distance=args.max_commit_distance,
@@ -328,6 +333,7 @@ if __name__ == "__main__":
                 history_length=args.history_length,
                 random_map=args.random_map,
                 ignore_defender=args.ignore_defender,
+                att_exit_distance_reward_coeff=args.att_exit_distance_reward_coeff,
             )
             for i in range(args.num_envs)
         ],

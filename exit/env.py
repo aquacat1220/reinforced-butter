@@ -64,7 +64,8 @@ class ExitEnv(
         self,
         render_mode: str = "rgb_array",
         random_map: bool = True,
-        distance_reward_coeff: float = 0.1,
+        att_def_distance_reward_coeff: float = 0.1,
+        att_exit_distance_reward_coeff: float = 0.15,
         max_steps: int = 256,
     ):
         if render_mode not in self.metadata["render_modes"]:
@@ -72,7 +73,8 @@ class ExitEnv(
                 '`render_mode` should be one of `ExitEnv.metadata["render_modes"].'
             )
         self.render_mode = render_mode
-        self._distance_reward_coeff = distance_reward_coeff
+        self._att_def_distance_reward_coeff = att_def_distance_reward_coeff
+        self_att_exit_distance_reward_coeff = att_exit_distance_reward_coeff
         self._max_steps = max_steps
         self._core = ExitCore(random_map=random_map)
 
@@ -120,7 +122,7 @@ class ExitEnv(
             str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
         ] = {}
 
-        attacker_pos: tuple[int, int] | None = self._core.attacker
+        attacker_pos: tuple[int, int] | None = self._core.attacker_pos
         if attacker_pos is None:
             attacker_pos = (-1, -1)
         observation[self.attacker_name] = (
@@ -128,7 +130,7 @@ class ExitEnv(
             attacker_pos,
         )
 
-        defender_pos: tuple[int, int] | None = self._core.defender
+        defender_pos: tuple[int, int] | None = self._core.defender_pos
         if defender_pos is None:
             defender_pos = (-1, -1)
         observation[self.defender_name] = (
@@ -156,12 +158,19 @@ class ExitEnv(
                 raise Exception("Unreachable")
         return score
 
-    def _compute_distance(self) -> int | None:
-        attacker_pos = self._core.attacker
-        defender_pos = self._core.defender
+    def _get_att_def_distance(self) -> int | None:
+        attacker_pos = self._core.attacker_pos
+        defender_pos = self._core.defender_pos
         if (attacker_pos is None) or (defender_pos is None):
             return None
         return len(find_path(self._grid, defender_pos, attacker_pos))
+
+    def _get_att_exit_distance(self) -> int | None:
+        attacker_pos = self._core.attacker_pos
+        exit_pos = self._core.exit_pos
+        if (attacker_pos is None) or (exit_pos is None):
+            return None
+        return len(find_path(self._grid, exit_pos, attacker_pos))
 
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None
@@ -173,9 +182,17 @@ class ExitEnv(
         walls = (self._core.map & WALL) != 0
         self._grid: Grid = Grid(matrix=1 - walls)
 
-        distance = self._compute_distance()
-        assert distance is not None  # Distance is never `None` right after reset.
-        self._last_distance: int = distance
+        att_def_distance = self._get_att_def_distance()
+        assert (
+            att_def_distance is not None
+        )  # Distance is never `None` right after reset.
+        self._last_att_def_distance: int = att_def_distance
+
+        att_exit_distance = self._get_att_exit_distance()
+        assert (
+            att_exit_distance is not None
+        )  # Distance is never `None` right after reset.
+        self._last_att_exit_distance: int = att_exit_distance
         self._step: int = 0
         return self._get_observation(), self._get_empty_infos()
 
@@ -201,12 +218,19 @@ class ExitEnv(
 
         reward: float = score
 
-        distance = self._compute_distance()
-        if distance is not None:
-            delta_distance = distance - self._last_distance
-            self._last_distance = distance
+        att_def_distance = self._get_att_def_distance()
+        if att_def_distance is not None:
+            delta_att_def_distance = att_def_distance - self._last_att_def_distance
+            self._last_att_def_distance = att_def_distance
             # Defender wants to get closer to the attacker.
-            reward -= self._distance_reward_coeff * delta_distance
+            reward -= self._att_def_distance_reward_coeff * delta_att_def_distance
+
+        att_exit_distance = self._get_att_exit_distance()
+        if att_exit_distance is not None:
+            delta_att_exit_distance = att_exit_distance - self._last_att_exit_distance
+            self._last_att_exit_distance = att_exit_distance
+            # Defender doesn't want attacker to get close to the exit.
+            reward += self._att_exit_distance_reward_coeff * delta_att_exit_distance
 
         if (not self._core.terminated) and (self._step >= self._max_steps):
             reward += WIN_REWARD

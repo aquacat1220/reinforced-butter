@@ -91,8 +91,10 @@ class AgentType(Enum):
 
 class ExitCore:
     def __init__(self, random_map: bool = True):
-        self.attacker: tuple[int, int] | None = None
-        self.defender: tuple[int, int] | None = None
+        self.attacker_pos: tuple[int, int] | None = None
+        self.defender_pos: tuple[int, int] | None = None
+        self.exit_pos: tuple[int, int] | None = None
+        self.decoy_pos: tuple[int, int] | None = None
         self._random_map = random_map
 
     def _get_random(self, filter: np.int8 = WALL) -> tuple[int, int]:
@@ -148,27 +150,31 @@ class ExitCore:
         if not self._random_map:
             self.map: np.ndarray[Any, np.dtype[np.int8]] = PRESET.copy()
             attacker_pos = np.argwhere(self.map & ATTACKER)[0]
-            self.attacker = (attacker_pos[0], attacker_pos[1])
+            self.attacker_pos = (attacker_pos[0], attacker_pos[1])
             defender_pos = np.argwhere(self.map & DEFENDER)[0]
-            self.defender = (defender_pos[0], defender_pos[1])
+            self.defender_pos = (defender_pos[0], defender_pos[1])
             # `PRESET` has two exits in the map.
             exit_poss = np.argwhere(self.map & EXIT)
             # Convert one of them into a decoy.
             decoy_pos = self._rng.choice(exit_poss)
             decoy_pos: tuple[int, int] = (decoy_pos[0], decoy_pos[1])
             self.map[decoy_pos] ^= EXIT | DECOY
+            self.decoy_pos = decoy_pos
+            self.exit_pos = np.argwhere(self.map & EXIT)[0]
         else:
             self.map: np.ndarray[Any, np.dtype[np.int8]] = TEMPLATE.copy()
             exit_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
             self.map[exit_pos] ^= EXIT
+            self.exit_pos = exit_pos
             decoy_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
             self.map[decoy_pos] ^= DECOY
+            self.decoy_pos = decoy_pos
             attacker_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
             self.map[attacker_pos] ^= ATTACKER
-            self.attacker = attacker_pos
+            self.attacker_pos = attacker_pos
             defender_pos = self._get_random(WALL | EXIT | DECOY | ATTACKER | DEFENDER)
             self.map[defender_pos] ^= DEFENDER
-            self.defender = defender_pos
+            self.defender_pos = defender_pos
         self.events: list[Event] = []
         self.terminated: bool = False
 
@@ -183,12 +189,12 @@ class ExitCore:
             raise Exception("Unreachable")
 
     def perform_defender_action(self, action: int):
-        assert self.defender is not None
+        assert self.defender_pos is not None
 
         if action == STAY:
             return
 
-        new_pos = self._get_adjacent(self.defender, action)
+        new_pos = self._get_adjacent(self.defender_pos, action)
         if new_pos is None:
             # `action` moves defender out of map boundaries.
             return
@@ -199,29 +205,29 @@ class ExitCore:
         if self.map[new_pos] & ATTACKER:
             # `action` moves defender into an attacker. Capture the attacker, and end the game.
             # Remove the defender from old position.
-            self.map[self.defender] ^= DEFENDER
+            self.map[self.defender_pos] ^= DEFENDER
             # Place the defender here, and remove the attacker.
             self.map[new_pos] ^= DEFENDER | ATTACKER
             # Update the defender position.
-            self.defender = new_pos
+            self.defender_pos = new_pos
             # Update the attacker position.
-            self.attacker = None
+            self.attacker_pos = None
             self.events.append(Event.ATTACKER_CAPTURED)
             self.terminated = True
             return
 
-        self.map[self.defender] ^= DEFENDER
+        self.map[self.defender_pos] ^= DEFENDER
         self.map[new_pos] ^= DEFENDER
-        self.defender = new_pos
+        self.defender_pos = new_pos
         return
 
     def perform_attacker_action(self, action: int):
-        assert self.attacker is not None
+        assert self.attacker_pos is not None
 
         if action == STAY:
             return
 
-        new_pos = self._get_adjacent(self.attacker, action)
+        new_pos = self._get_adjacent(self.attacker_pos, action)
         if new_pos is None:
             # `action` moves the attacker out of map boundaries.
             return
@@ -231,31 +237,31 @@ class ExitCore:
 
         if self.map[new_pos] & DEFENDER:
             # `action` moves attacker into a defender. Capture the attacker, and end the game.
-            self.map[self.attacker] ^= ATTACKER
-            self.attacker = None
+            self.map[self.attacker_pos] ^= ATTACKER
+            self.attacker_pos = None
             self.events.append(Event.ATTACKER_CAPTURED)
             self.terminated = True
             return
 
         if self.map[new_pos] & EXIT:
             # `action` moves attacker into an exit. Take the exit and end the game.
-            self.map[self.attacker] ^= ATTACKER
+            self.map[self.attacker_pos] ^= ATTACKER
             self.map[new_pos] ^= ATTACKER
-            self.attacker = new_pos
+            self.attacker_pos = new_pos
             self.events.append(Event.ATTACKER_EXITED)
             self.terminated = True
             return
 
         if self.map[new_pos] & DECOY:
             # `action` moves attacker into a decoy.
-            self.map[self.attacker] ^= ATTACKER
+            self.map[self.attacker_pos] ^= ATTACKER
             self.map[new_pos] ^= ATTACKER
-            self.attacker = new_pos
+            self.attacker_pos = new_pos
             self.events.append(Event.ATTACKER_DECOY)
             return
 
         # If player was not killed by a ghost, move player to new position.
-        self.map[self.attacker] ^= ATTACKER
+        self.map[self.attacker_pos] ^= ATTACKER
         self.map[new_pos] ^= ATTACKER
-        self.attacker = new_pos
+        self.attacker_pos = new_pos
         return

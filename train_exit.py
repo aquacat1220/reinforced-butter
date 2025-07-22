@@ -158,7 +158,7 @@ def make_env(
             env = ExitEnv(
                 render_mode="rgb_array",
                 random_map=random_map,
-                distance_reward_coeff=distance_reward_coeff,
+                att_def_distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
@@ -177,7 +177,7 @@ def make_env(
             env = ExitEnv(
                 render_mode="rgb_array",
                 random_map=random_map,
-                distance_reward_coeff=distance_reward_coeff,
+                att_def_distance_reward_coeff=distance_reward_coeff,
                 max_steps=max_steps,
             )
             if idx % 2 == 0:
