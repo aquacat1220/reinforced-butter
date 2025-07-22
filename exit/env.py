@@ -74,7 +74,7 @@ class ExitEnv(
             )
         self.render_mode = render_mode
         self._att_def_distance_reward_coeff = att_def_distance_reward_coeff
-        self_att_exit_distance_reward_coeff = att_exit_distance_reward_coeff
+        self._att_exit_distance_reward_coeff = att_exit_distance_reward_coeff
         self._max_steps = max_steps
         self._core = ExitCore(random_map=random_map)
 
