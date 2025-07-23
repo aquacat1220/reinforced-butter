@@ -19,6 +19,9 @@ from .agents import (
     TimeSwitchAttacker,
     StupidAttacker,
     NaiveAttacker,
+    RandomNaiveAttacker,
     DecisiveNaiveAttacker,
+    DecisiveRandomNaiveAttacker,
     DeceptiveAttacker,
+    DeceptiveRandomAttacker,
 )

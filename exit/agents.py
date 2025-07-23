@@ -242,7 +242,7 @@ class RandomPursueAttacker(AttackerAgentBase):
         target: np.int8 = EXIT,
         ignore_defender: bool = True,
         num_obstacles: int = 2,
-        max_obstacle_weight: float = 10,
+        max_obstacle_weight: float = 20,
     ):
         self._grid: Grid | None = None
         # `self._rng` is the only state that should be kept track for determinism.
@@ -645,6 +645,38 @@ class NaiveAttacker(DistanceSwitchAttacker):
         )
 
 
+class RandomNaiveAttacker(DistanceSwitchAttacker):
+    """
+    Moves towards the target, unless the defender is closer than `safety_distance`.
+    """
+
+    def __init__(
+        self,
+        seed: int | None = None,
+        min_safe_distance: int = 5,
+        stupidity: int = 2,
+        target: np.int8 = EXIT,
+        ignore_defender: bool = False,
+        num_obstacles: int = 2,
+        max_obstacle_weight: float = 20,
+    ):
+        super().__init__(
+            trigger_distance=min_safe_distance,
+            target=DEFENDER,
+            greater_or_eq=StupidAttacker(
+                RandomPursueAttacker(
+                    seed=seed,
+                    target=target,
+                    ignore_defender=ignore_defender,
+                    num_obstacles=num_obstacles,
+                    max_obstacle_weight=max_obstacle_weight,
+                ),
+                stupidity=stupidity,
+            ),
+            lesser=EvadeAttacker(seed=seed, target=DEFENDER),
+        )
+
+
 class DecisiveNaiveAttacker(DistanceSwitchAttacker):
     """
     If `target` is closer than `commit_distance`, ignore the defender and moves to `target`.
@@ -669,6 +701,42 @@ class DecisiveNaiveAttacker(DistanceSwitchAttacker):
                 stupidity=stupidity,
                 target=target,
                 ignore_defender=ignore_defender,
+            ),
+            lesser=StupidAttacker(
+                PursueAttacker(seed=seed, target=target, ignore_defender=False),
+                stupidity=stupidity,
+            ),
+        )
+
+
+class DecisiveRandomNaiveAttacker(DistanceSwitchAttacker):
+    """
+    If `target` is closer than `commit_distance`, ignore the defender and moves to `target`.
+    Otherwise moves towards the `target`, unless the defender is closer than `safety_distance`.
+    """
+
+    def __init__(
+        self,
+        seed: int | None = None,
+        min_safe_distance: int = 5,
+        max_commit_distance: int = 3,
+        stupidity: int = 2,
+        target: np.int8 = EXIT,
+        ignore_defender: bool = False,
+        num_obstacles: int = 2,
+        max_obstacle_weight: float = 20,
+    ):
+        super().__init__(
+            trigger_distance=max_commit_distance,
+            target=target,
+            greater_or_eq=RandomNaiveAttacker(
+                seed=seed,
+                min_safe_distance=min_safe_distance,
+                stupidity=stupidity,
+                target=target,
+                ignore_defender=ignore_defender,
+                num_obstacles=num_obstacles,
+                max_obstacle_weight=max_obstacle_weight,
             ),
             lesser=StupidAttacker(
                 PursueAttacker(seed=seed, target=target, ignore_defender=False),
@@ -708,5 +776,46 @@ class DeceptiveAttacker(TimeSwitchAttacker):
                 stupidity=stupidity,
                 target=DECOY,
                 ignore_defender=ignore_defender,
+            ),
+        )
+
+
+class DeceptiveRandomAttacker(TimeSwitchAttacker):
+    """
+    Targets the decoy for first before `stop_deception_after`, then targets the exit.
+    """
+
+    def __init__(
+        self,
+        seed: int | None = None,
+        min_safe_distance: int = 5,
+        max_commit_distance: int = 3,
+        stupidity: int = 2,
+        ignore_defender: bool = False,
+        num_obstacles: int = 2,
+        max_obstacle_weight: float = 20,
+        stop_deception_after: int = 32,
+    ):
+        super().__init__(
+            true_after=stop_deception_after,
+            true=DecisiveRandomNaiveAttacker(
+                seed=seed,
+                min_safe_distance=min_safe_distance,
+                max_commit_distance=max_commit_distance,
+                stupidity=stupidity,
+                target=EXIT,
+                ignore_defender=ignore_defender,
+                num_obstacles=num_obstacles,
+                max_obstacle_weight=max_obstacle_weight,
+            ),
+            # Don't be decisive at a decoy.
+            false=RandomNaiveAttacker(
+                seed=seed,
+                min_safe_distance=min_safe_distance,
+                stupidity=stupidity,
+                target=DECOY,
+                ignore_defender=ignore_defender,
+                num_obstacles=num_obstacles,
+                max_obstacle_weight=max_obstacle_weight,
             ),
         )

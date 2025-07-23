@@ -17,8 +17,8 @@ from typing import Any
 from exit import (
     ExitEnv,
     GymWrapper,
-    DeceptiveAttacker,
-    DecisiveNaiveAttacker,
+    DeceptiveRandomAttacker,
+    DecisiveRandomNaiveAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
     FrameStackWrapper,
@@ -28,7 +28,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_lstm_5050_norandom_nostupid_short"
+    exp_name: str = "exit_env_lstm_5050_random_attacker"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -136,8 +136,8 @@ def make_env(
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def naive_attacker_builder(seed: int | None) -> DecisiveNaiveAttacker:
-            return DecisiveNaiveAttacker(
+        def naive_attacker_builder(seed: int | None) -> DecisiveRandomNaiveAttacker:
+            return DecisiveRandomNaiveAttacker(
                 seed=seed,
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
@@ -145,8 +145,8 @@ def make_env(
                 ignore_defender=ignore_defender,
             )
 
-        def deceptive_attacker_builder(seed: int | None) -> DeceptiveAttacker:
-            return DeceptiveAttacker(
+        def deceptive_attacker_builder(seed: int | None) -> DeceptiveRandomAttacker:
+            return DeceptiveRandomAttacker(
                 seed=seed,
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
