@@ -69,15 +69,15 @@ class AttackerAgentBase(ABC):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
-        return [STAY, UP, DOWN, LEFT, RIGHT]
+    ) -> int:
+        return STAY
 
     @abstractmethod
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
-        return [STAY, UP, DOWN, LEFT, RIGHT]
+    ) -> int:
+        return STAY
 
     @abstractmethod
     def reset_peek(self):
@@ -88,7 +88,7 @@ class UserAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         while True:
             Image.fromarray(ExitEnv.render_observation_rgb(observation[0])).save(
                 "observation_user_attacker.png"
@@ -107,12 +107,12 @@ class UserAttacker(AttackerAgentBase):
                 action = RIGHT
             else:
                 continue
-            return [action]
+            return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         return self.get_action(observation=observation)
 
     def reset_peek(self):
@@ -123,13 +123,13 @@ class IdleAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
-        return [STAY]
+    ) -> int:
+        return STAY
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         return self.get_action(observation=observation)
 
     def reset_peek(self):
@@ -139,15 +139,28 @@ class IdleAttacker(AttackerAgentBase):
 class PursueAttacker(AttackerAgentBase):
     """Charges straight to the target."""
 
-    def __init__(self, target: np.int8 = EXIT, ignore_defender: bool = True):
+    def __init__(
+        self,
+        seed: int | None = None,
+        target: np.int8 = EXIT,
+        ignore_defender: bool = True,
+    ):
         self._grid: Grid | None = None
+        # `self._rng` is the only state that should be kept track for determinism.
+        # Since `choice()`-ing from the rng will update the rng in both get and peek,
+        # we are effectively sharing the same state in get and peek.
+        # Thus we store the inner state of the rng for the get-timeline, and restore it before `get_action()`.
+        self._rng = np.random.default_rng(seed)
+        self._rng_saved_state: dict[str, Any] | None = None
         self._target = target
         self._ignore_defender = ignore_defender
 
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
+        # Load the saved rng state.
+        self._load_saved_state()
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -174,45 +187,66 @@ class PursueAttacker(AttackerAgentBase):
                 continue
             if walls[candidate_position]:
                 continue
-            # Temporarily consider the defender to be an obstacle for pathfinding.
-            # And also raise the weights of defender-reachable tiles.
-            defender_node = self._grid.node(x=defender_pos[1], y=defender_pos[0])  # type: ignore
-            for node in self._grid.neighbors(defender_node):
-                node.weight = 100
-            defender_node.walkable = False
-            distance = len(find_path(self._grid, candidate_position, target_pos))
-            for node in self._grid.neighbors(defender_node):
-                node.weight = 1
-            defender_node.walkable = True
+            if self._ignore_defender:
+                distance = len(find_path(self._grid, candidate_position, target_pos))
+            else:
+                # Temporarily consider the defender to be an obstacle for pathfinding.
+                # And also raise the weights of defender-reachable tiles.
+                defender_node = self._grid.node(x=defender_pos[1], y=defender_pos[0])  # type: ignore
+                for node in self._grid.neighbors(defender_node):
+                    node.weight = 100
+                defender_node.walkable = False
+                distance = len(find_path(self._grid, candidate_position, target_pos))
+                for node in self._grid.neighbors(defender_node):
+                    node.weight = 1
+                defender_node.walkable = True
             if distance < min_distance:
                 min_candidates = [candidate_action]
                 min_distance = distance
             elif distance == min_distance:
                 min_candidates.append(candidate_action)
 
-        return min_candidates
+        action = self._rng.choice(min_candidates)
+        # `reset_peek()` to ensure the next peek is correct.
+        # `PursueAttacker` doesn't need this, as `get_action()` and `peek_action()` are sharing the same state and thus doesn't need syncing.
+        # But I'm doing this to keep things consistent.
+        self.reset_peek()
+        return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
+        if self._rng_saved_state is None:
+            # If this is the first peek after a get, save the state to restore it later.
+            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
         return self.get_action(observation=observation)
 
+    def _load_saved_state(self):
+        if self._rng_saved_state is None:
+            return
+        self._rng.bit_generator.state = self._rng_saved_state
+        self._rng_saved_state = None
+
     def reset_peek(self):
+        self._load_saved_state()
         return
 
 
 class EvadeAttacker(AttackerAgentBase):
     """Runs away from the target."""
 
-    def __init__(self, target: np.int8 = DEFENDER):
+    def __init__(self, seed: int | None = None, target: np.int8 = DEFENDER):
         self._grid: Grid | None = None
+        self._rng = np.random.default_rng(seed)
+        self._rng_saved_state: dict[str, Any] | None = None
         self._target = target
 
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
+        self.reset_peek()
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -245,15 +279,22 @@ class EvadeAttacker(AttackerAgentBase):
             elif distance == max_distance:
                 max_candidates.append(candidate_action)
 
-        return max_candidates
+        return self._rng.choice(max_candidates)
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
+        if self._rng_saved_state is None:
+            # If this is the first peek after a get, save the state to restore it later.
+            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
         return self.get_action(observation=observation)
 
     def reset_peek(self):
+        if self._rng_saved_state is None:
+            return
+        self._rng.bit_generator.state = self._rng_saved_state
+        self._rng_saved_state = None
         return
 
 
@@ -273,7 +314,7 @@ class SwitchAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         # If `self._true` and `self._false` have a mutual action, prefer that.
         # Reset peek to ensure we are getting the immediate next action peek.
         # self.reset_peek()
@@ -292,31 +333,37 @@ class SwitchAttacker(AttackerAgentBase):
         #         _ = self._false.get_action(observation=observation)
         #     return mutual_candidates
         if self._condition(observation, False):
-            return self._true.get_action(observation=observation)
-        return self._false.get_action(observation=observation)
+            action = self._true.get_action(observation=observation)
+        else:
+            action = self._false.get_action(observation=observation)
+        self.reset_peek()
+        return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
-        true_candidates = self._true.peek_action(observation=observation)
-        false_candidates = self._false.peek_action(observation=observation)
+    ) -> int:
+        # true_candidates = self._true.peek_action(observation=observation)
+        # false_candidates = self._false.peek_action(observation=observation)
 
+        # if self._condition(observation, True):
+        #     self._false.reset_peek()
+        # else:
+        #     self._true.reset_peek()
+
+        # mutual_candidates: list[int] = []
+        # for candidate in true_candidates:
+        #     if candidate in false_candidates:
+        #         mutual_candidates.append(candidate)
+
+        # if len(mutual_candidates) > 0:
+        #     return mutual_candidates
+        # if self._condition(observation, True):
+        #     return true_candidates
+        # return false_candidates
         if self._condition(observation, True):
-            self._false.reset_peek()
-        else:
-            self._true.reset_peek()
-
-        mutual_candidates: list[int] = []
-        for candidate in true_candidates:
-            if candidate in false_candidates:
-                mutual_candidates.append(candidate)
-
-        if len(mutual_candidates) > 0:
-            return mutual_candidates
-        if self._condition(observation, True):
-            return true_candidates
-        return false_candidates
+            return self._true.peek_action(observation=observation)
+        return self._false.peek_action(observation=observation)
 
     def reset_peek(self):
         self._true.reset_peek()
@@ -372,7 +419,7 @@ class TimeSwitchAttacker(SwitchAttacker):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         actions = super().get_action(observation)
         self._counter += 1
         self.reset_peek()
@@ -381,10 +428,10 @@ class TimeSwitchAttacker(SwitchAttacker):
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
-        actions = super().peek_action(observation)
+    ) -> int:
+        action = super().peek_action(observation)
         self._peek_counter += 1
-        return actions
+        return action
 
     def reset_peek(self):
         super().reset_peek()
@@ -401,24 +448,25 @@ class StupidAttacker(AttackerAgentBase):
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         if self._counter % self._stupidity == 0:
-            self._counter += 1
-            self._peek_counter = self._counter
-            return self._inner.get_action(observation=observation)
+            action = self._inner.get_action(observation=observation)
+        else:
+            action = STAY
         self._counter += 1
         self.reset_peek()
-        return [STAY]
+        return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-    ) -> list[int]:
+    ) -> int:
         if self._peek_counter % self._stupidity == 0:
-            self._peek_counter += 1
-            return self._inner.peek_action(observation=observation)
+            action = self._inner.peek_action(observation=observation)
+        else:
+            action = STAY
         self._peek_counter += 1
-        return [STAY]
+        return action
 
     def reset_peek(self):
         self._peek_counter = self._counter
@@ -432,6 +480,7 @@ class NaiveAttacker(DistanceSwitchAttacker):
 
     def __init__(
         self,
+        seed: int | None = None,
         min_safe_distance: int = 5,
         stupidity: int = 2,
         target: np.int8 = EXIT,
@@ -441,10 +490,12 @@ class NaiveAttacker(DistanceSwitchAttacker):
             trigger_distance=min_safe_distance,
             target=DEFENDER,
             greater_or_eq=StupidAttacker(
-                PursueAttacker(target=target, ignore_defender=ignore_defender),
+                PursueAttacker(
+                    seed=seed, target=target, ignore_defender=ignore_defender
+                ),
                 stupidity=stupidity,
             ),
-            lesser=EvadeAttacker(target=DEFENDER),
+            lesser=EvadeAttacker(seed=seed, target=DEFENDER),
         )
 
 
@@ -456,6 +507,7 @@ class DecisiveNaiveAttacker(DistanceSwitchAttacker):
 
     def __init__(
         self,
+        seed: int | None = None,
         min_safe_distance: int = 5,
         max_commit_distance: int = 3,
         stupidity: int = 2,
@@ -466,13 +518,14 @@ class DecisiveNaiveAttacker(DistanceSwitchAttacker):
             trigger_distance=max_commit_distance,
             target=target,
             greater_or_eq=NaiveAttacker(
+                seed=seed,
                 min_safe_distance=min_safe_distance,
                 stupidity=stupidity,
                 target=target,
                 ignore_defender=ignore_defender,
             ),
             lesser=StupidAttacker(
-                PursueAttacker(target=target, ignore_defender=False),
+                PursueAttacker(seed=seed, target=target, ignore_defender=False),
                 stupidity=stupidity,
             ),
         )
@@ -485,6 +538,7 @@ class DeceptiveAttacker(TimeSwitchAttacker):
 
     def __init__(
         self,
+        seed: int | None = None,
         min_safe_distance: int = 5,
         max_commit_distance: int = 3,
         stupidity: int = 2,
@@ -494,6 +548,7 @@ class DeceptiveAttacker(TimeSwitchAttacker):
         super().__init__(
             true_after=stop_deception_after,
             true=DecisiveNaiveAttacker(
+                seed=seed,
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
                 stupidity=stupidity,
@@ -502,6 +557,7 @@ class DeceptiveAttacker(TimeSwitchAttacker):
             ),
             # Don't be decisive at a decoy.
             false=NaiveAttacker(
+                seed=seed,
                 min_safe_distance=min_safe_distance,
                 stupidity=stupidity,
                 target=DECOY,

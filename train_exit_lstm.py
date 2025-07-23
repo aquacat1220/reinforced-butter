@@ -136,16 +136,18 @@ def make_env(
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def naive_attacker_builder() -> DecisiveNaiveAttacker:
+        def naive_attacker_builder(seed: int | None) -> DecisiveNaiveAttacker:
             return DecisiveNaiveAttacker(
+                seed=seed,
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
                 stupidity=stupidity,
                 ignore_defender=ignore_defender,
             )
 
-        def deceptive_attacker_builder() -> DeceptiveAttacker:
+        def deceptive_attacker_builder(seed: int | None) -> DeceptiveAttacker:
             return DeceptiveAttacker(
+                seed=seed,
                 min_safe_distance=min_safe_distance,
                 max_commit_distance=max_commit_distance,
                 stupidity=stupidity,

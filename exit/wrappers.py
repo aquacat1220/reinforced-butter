@@ -17,13 +17,15 @@ class GymWrapper(
     Passes the inner observation in `info["gym_wrapper_inner_observations"]`.
     """
 
-    def __init__(self, env: ExitEnv, attacker_builder: Callable[[], AttackerAgentBase]):
+    def __init__(
+        self, env: ExitEnv, attacker_builder: Callable[[int | None], AttackerAgentBase]
+    ):
         """
         Construct a `GymWrapper` instance wrapping a `ExitEnv`, supplying attacker actions with attacker agent built from `attacker_builder`.
 
         Args:
             env (ExitEnv): The `ExitEnv` instance to wrap.
-            attacker_builder (Callable[[], AttackerAgentBase]): A builder function that returns a `AttackerAgentBase` instance.
+            attacker_builder (Callable[[int | None], AttackerAgentBase]): A builder function that takes a seed and returns a `AttackerAgentBase` instance.
         """
         self.env = env
         self.metadata = env.metadata
@@ -45,8 +47,7 @@ class GymWrapper(
         dict[Any, Any],
     ]:
         actions: dict[str, int] = {}
-        attacker_action_candidates = self._attacker_next_action
-        actions[self.env.attacker_name] = self._rng.choice(attacker_action_candidates)
+        actions[self.env.attacker_name] = self._attacker_next_action
         actions[self.env.defender_name] = int(action)
         observations, rewards, terminations, truncations, infos = self.env.step(actions)
 
@@ -78,7 +79,7 @@ class GymWrapper(
         self._rng: np.random.Generator = np.random.default_rng(seed)
         observations, infos = self.env.reset(seed, options)
 
-        self._attacker = self._attacker_builder()
+        self._attacker = self._attacker_builder(seed)
         self._attacker_next_action = self._attacker.get_action(
             observations[self.env.attacker_name]
         )

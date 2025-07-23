@@ -29,8 +29,15 @@ import numpy as np
 from PIL import Image
 
 
-def attacker_builder() -> AttackerAgentBase:
-    return DeceptiveAttacker(3, 1, 1, 30)
+def attacker_builder(seed: int | None) -> AttackerAgentBase:
+    return DeceptiveAttacker(
+        seed=seed,
+        min_safe_distance=3,
+        max_commit_distance=1,
+        stupidity=1,
+        ignore_defender=False,
+        stop_deception_after=16,
+    )
 
 
 env = ExitEnv(render_mode="rgb_array", random_map=False)
