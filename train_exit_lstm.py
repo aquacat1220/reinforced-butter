@@ -28,7 +28,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_lstm_5050"
+    exp_name: str = "exit_env_lstm_5050_norandom_nostupid_short"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -44,17 +44,17 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    capture_interval: int = 2000
+    capture_interval: int = 200
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
-    stupidity: int = 2
+    stupidity: int = 1
     """how often `StupidPursueGhost`s move"""
     # preview_steps: int = 2
     # """number of steps to preview into the future"""
     att_def_distance_reward_coeff: float = 0.1
     """reward for getting 1 tile closer to the attacker"""
-    max_steps: int = 256
+    max_steps: int = 64
     min_safe_distance: int = 3
     """the minimum distance the attacker considers to be safe to get closer to the defender"""
     max_commit_distance: int = 1
@@ -63,7 +63,7 @@ class Args:
     """attacker will stop deception after `stop_deception_after` steps"""
     history_length: int = 2
     """length of the stacked history"""
-    random_map: bool = True
+    random_map: bool = False
     """whether to randomize map layout"""
     ignore_defender: bool = False
     """whether to ignore defender while attacker pathfinding"""
