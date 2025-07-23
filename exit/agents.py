@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Any, Callable
 from abc import ABC, abstractmethod
-from pathfinding.core.grid import Grid  # type: ignore
+from pathfinding.core.grid import Grid, GridNode  # type: ignore
 from PIL import Image
 from .core import (
     STAY,
@@ -61,7 +61,7 @@ def distance_between(
 ) -> int:
     start_pos = get_target_position(observation, start)
     end_pos = get_target_position(observation, end)
-    return len(find_path(grid, start_pos, end_pos))
+    return len(find_path(grid, start_pos, end_pos)[1])
 
 
 class AttackerAgentBase(ABC):
@@ -188,7 +188,7 @@ class PursueAttacker(AttackerAgentBase):
             if walls[candidate_position]:
                 continue
             if self._ignore_defender:
-                distance = len(find_path(self._grid, candidate_position, target_pos))
+                distance = len(find_path(self._grid, candidate_position, target_pos)[1])
             else:
                 # Temporarily consider the defender to be an obstacle for pathfinding.
                 # And also raise the weights of defender-reachable tiles.
@@ -196,7 +196,7 @@ class PursueAttacker(AttackerAgentBase):
                 for node in self._grid.neighbors(defender_node):
                     node.weight = 100
                 defender_node.walkable = False
-                distance = len(find_path(self._grid, candidate_position, target_pos))
+                distance = len(find_path(self._grid, candidate_position, target_pos)[1])
                 for node in self._grid.neighbors(defender_node):
                     node.weight = 1
                 defender_node.walkable = True
@@ -227,6 +227,152 @@ class PursueAttacker(AttackerAgentBase):
             return
         self._rng.bit_generator.state = self._rng_saved_state
         self._rng_saved_state = None
+
+    def reset_peek(self):
+        self._load_saved_state()
+        return
+
+
+class RandomPursueAttacker(AttackerAgentBase):
+    """Chooses between multiple paths to a target."""
+
+    def __init__(
+        self,
+        seed: int | None = None,
+        target: np.int8 = EXIT,
+        ignore_defender: bool = True,
+        num_obstacles: int = 2,
+        max_obstacle_weight: float = 10,
+    ):
+        self._grid: Grid | None = None
+        # `self._rng` is the only state that should be kept track for determinism.
+        # Since `choice()`-ing from the rng will update the rng in both get and peek,
+        # we are effectively sharing the same state in get and peek.
+        # Thus we store the inner state of the rng for the get-timeline, and restore it before `get_action()`.
+        self._rng = np.random.default_rng(seed)
+        self._rng_saved_state: dict[str, Any] | None = None
+        self._target = target
+        self._selected_path: tuple[list[GridNode], list[int]] | None = None
+        self._saved_selected_path: tuple[list[GridNode], list[int]] | None = None
+        self._ignore_defender = ignore_defender
+        self._num_obstacles = num_obstacles
+        self._obstacle_weight = max_obstacle_weight / num_obstacles
+
+    def _select_new_path(
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+    ):
+        assert self._grid is not None
+        target_pos: tuple[int, int] = get_target_position(observation, self._target)
+        defender_pos: tuple[int, int] = get_target_position(observation, DEFENDER)
+        attacker_pos = observation[1]
+
+        # First fetch the optimal route.
+        if self._ignore_defender:
+            self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+        else:
+            # Temporarily consider the defender to be an obstacle for pathfinding.
+            # And also raise the weights of defender-reachable tiles.
+            defender_node = self._grid.node(x=defender_pos[1], y=defender_pos[0])  # type: ignore
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 100
+            defender_node.walkable = False
+            self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 1
+            defender_node.walkable = True
+            if len(self._selected_path[0]) == 0:
+                # This means the defender is blocking all possible paths between the attacker and the target.
+                # In such case, we have no other choice than to ignore the defender.
+                self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+
+        # Then randomly raise the cost of some tiles in the path.
+        nodes = self._selected_path[0]
+        assert len(nodes) > 0
+
+        obstacle_nodes: list[GridNode] = self._rng.choice(nodes, self._num_obstacles)  # type: ignore
+        for obstacle_node in obstacle_nodes:  # type: ignore
+            obstacle_node.weight = self._obstacle_weight
+            print(f"{obstacle_node.y}, {obstacle_node.x}")
+
+        # Then fetch the route again.
+        if self._ignore_defender:
+            self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+        else:
+            # Temporarily consider the defender to be an obstacle for pathfinding.
+            # And also raise the weights of defender-reachable tiles.
+            defender_node = self._grid.node(x=defender_pos[1], y=defender_pos[0])  # type: ignore
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 100
+            defender_node.walkable = False
+            self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+            for node in self._grid.neighbors(defender_node):
+                node.weight = 1
+            defender_node.walkable = True
+            if len(self._selected_path[0]) == 0:
+                # This means the defender is blocking all possible paths between the attacker and the target.
+                # In such case, we have no other choice than to ignore the defender.
+                self._selected_path = find_path(self._grid, attacker_pos, target_pos)
+
+        for obstacle_node in obstacle_nodes:  # type: ignore
+            obstacle_node.weight = 1
+
+        return
+
+    def _ensure_path(
+        self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
+    ):
+        if self._selected_path is None:
+            self._select_new_path(observation=observation)
+            return
+        head_node = self._selected_path[0][0]
+        attacker_pos = observation[1]
+        if attacker_pos != (head_node.y, head_node.x):
+            self._select_new_path(observation=observation)
+            return
+        defender_pos: tuple[int, int] = get_target_position(observation, DEFENDER)
+        for node in self._selected_path[0]:
+            if defender_pos == (node.y, node.x):
+                self._select_new_path(observation=observation)
+                return
+        return
+
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        # Load the saved rng state.
+        self._load_saved_state()
+        walls = observation[0][WALL_IDX]
+        if self._grid is None:
+            self._grid = Grid(matrix=1 - walls)
+
+        self._ensure_path(observation=observation)
+        assert self._selected_path is not None
+        path: list[GridNode] = self._selected_path[0]
+        actions: list[int] = self._selected_path[1]
+        assert path[0].x == observation[1][1] and path[0].y == observation[1][0]
+        action = actions[0]
+        self._selected_path = (path[1:], actions[1:])
+        self.reset_peek()
+        return action
+
+    def peek_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        if self._rng_saved_state is None:
+            # If this is the first peek after a get, save the state to restore it later.
+            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
+            self._saved_selected_path = self._selected_path
+        return self.get_action(observation=observation)
+
+    def _load_saved_state(self):
+        if self._rng_saved_state is not None:
+            self._rng.bit_generator.state = self._rng_saved_state
+            self._rng_saved_state = None
+        if self._saved_selected_path is not None:
+            self._selected_path = self._saved_selected_path
+            self._saved_selected_path = None
 
     def reset_peek(self):
         self._load_saved_state()
@@ -272,7 +418,7 @@ class EvadeAttacker(AttackerAgentBase):
                 continue
             if walls[candidate_position]:
                 continue
-            distance = len(find_path(self._grid, candidate_position, target_pos))
+            distance = len(find_path(self._grid, candidate_position, target_pos)[1])
             if distance > max_distance:
                 max_candidates = [candidate_action]
                 max_distance = distance

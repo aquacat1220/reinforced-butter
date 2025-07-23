@@ -12,6 +12,7 @@ from .agents import (
     UserAttacker,
     IdleAttacker,
     PursueAttacker,
+    RandomPursueAttacker,
     EvadeAttacker,
     SwitchAttacker,
     DistanceSwitchAttacker,

@@ -24,7 +24,7 @@ def find_path(
     grid: Grid,
     start: tuple[int, int],
     end: tuple[int, int],
-) -> list[int]:
+) -> tuple[list[GridNode], list[int]]:
     start_node = grid.node(x=start[1], y=start[0])  # type: ignore
     end_node = grid.node(x=end[1], y=end[0])  # type: ignore
     finder = AStarFinder()
@@ -50,7 +50,7 @@ def find_path(
             raise Exception("Unreachable")
         actions.append(action)
         curr_node = path_node  # type: ignore
-    return actions
+    return (path, actions)  # type: ignore
 
 
 class ExitEnv(
@@ -163,14 +163,14 @@ class ExitEnv(
         defender_pos = self._core.defender_pos
         if (attacker_pos is None) or (defender_pos is None):
             return None
-        return len(find_path(self._grid, defender_pos, attacker_pos))
+        return len(find_path(self._grid, defender_pos, attacker_pos)[1])
 
     def _get_att_exit_distance(self) -> int | None:
         attacker_pos = self._core.attacker_pos
         exit_pos = self._core.exit_pos
         if (attacker_pos is None) or (exit_pos is None):
             return None
-        return len(find_path(self._grid, exit_pos, attacker_pos))
+        return len(find_path(self._grid, exit_pos, attacker_pos)[1])
 
     def reset(
         self, seed: int | None = None, options: dict[Any, Any] | None = None

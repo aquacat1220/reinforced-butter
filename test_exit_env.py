@@ -10,6 +10,7 @@ from exit import (
     UserAttacker,
     IdleAttacker,
     PursueAttacker,
+    RandomPursueAttacker,
     EvadeAttacker,
     SwitchAttacker,
     DistanceSwitchAttacker,
@@ -30,13 +31,8 @@ from PIL import Image
 
 
 def attacker_builder(seed: int | None) -> AttackerAgentBase:
-    return DeceptiveAttacker(
-        seed=seed,
-        min_safe_distance=3,
-        max_commit_distance=1,
-        stupidity=1,
-        ignore_defender=False,
-        stop_deception_after=16,
+    return RandomPursueAttacker(
+        seed=seed, num_obstacles=2, max_obstacle_weight=20, ignore_defender=False
     )
 
 
@@ -55,7 +51,7 @@ observation, _ = env.reset(seed=1220, options={"increment_seed_by": 2})
 is_done: bool = False
 
 while True:
-    print(observation)
+    # print(observation)
     image = Image.fromarray(env.render())  # type: ignore
     image.save("observation_exit.png")
     if is_done:
