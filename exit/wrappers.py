@@ -4,7 +4,7 @@ from typing import Any, Callable, Generic, TypeVar
 from gymnasium.spaces import MultiBinary, Tuple, Discrete
 from .env import ExitEnv
 from .agents import AttackerAgentBase
-from .core import HEIGHT, WIDTH
+from .core import HEIGHT, WIDTH, STAY, UP, DOWN, LEFT, RIGHT
 from .env import WALL_IDX, EXIT_IDX, DECOY_IDX, ATTACKER_IDX, DEFENDER_IDX
 
 
@@ -60,7 +60,8 @@ class GymWrapper(
             )
 
         info = infos[self.env.defender_name]
-        info["gym_wrapper_inner_observations"] = observations
+        info["attacker_observation"] = observations[self.env.attacker_name]
+        info["defender_observation"] = observations[self.env.defender_name]
 
         return (
             observations[self.env.defender_name],
@@ -85,7 +86,8 @@ class GymWrapper(
         )
 
         info = infos[self.env.defender_name]
-        info["gym_wrapper_inner_observations"] = observations
+        info["attacker_observation"] = observations[self.env.attacker_name]
+        info["defender_observation"] = observations[self.env.defender_name]
 
         return (observations[self.env.defender_name], info)
 
@@ -93,213 +95,174 @@ class GymWrapper(
         return self.env.render()
 
 
-# class PreviewWrapper(
-#     Wrapper[
-#         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
-#         np.int64,
-#         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
-#         np.int64,
-#     ]
-# ):
-#     """
-#     Wrapper to add a preview of expected ghost behavior.
-#     What shoudl I do? Take the observation, run loops to create expected pos over time.
-#     I need to create ghost agents based on info, which can only be accessed in reset.
-#     Overriding reset must be the answer.
-#     """
+class PreviewWrapper(
+    Wrapper[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        np.int64,
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        np.int64,
+    ]
+):
+    """
+    Wrapper to add a preview of expected attacker behavior.
+    """
 
-#     def __init__(
-#         self,
-#         env: Env[
-#             tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], np.int64
-#         ],
-#         ghost_builder: Callable[[str], GhostAgentBase],
-#         preview_steps: int = 2,
-#     ):
-#         super().__init__(env)
-#         self.observation_space = Tuple(
-#             (
-#                 MultiBinary((5 + preview_steps, HEIGHT, WIDTH)),
-#                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
-#                 Discrete(POWER_DURATION + 1),
-#             )
-#         )
-#         self.action_space = Discrete(5)
-#         self._preview_steps = preview_steps
-#         self._ghost_builder = ghost_builder
+    def __init__(
+        self,
+        env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
+        attacker_builder: Callable[[int | None], AttackerAgentBase],
+        preview_steps: int = 2,
+    ):
+        super().__init__(env)
+        self.observation_space = Tuple(
+            (
+                MultiBinary((5 + preview_steps, HEIGHT, WIDTH)),
+                Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
+            )
+        )
+        self.action_space = Discrete(5)
+        self._preview_steps = preview_steps
+        self._attacker_builder = attacker_builder
 
-#     def _observation(
-#         self,
-#         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
-#         info: dict[Any, Any],
-#     ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]:
-#         map_view, player_pos, remaining_power = observation
+    def _observation(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        info: dict[Any, Any],
+    ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]:
+        _, defender_pos = observation
 
-#         if ("gym_wrapper_inner_observations" not in info) or (
-#             "ghost_dones" not in info
-#         ):
-#             raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
+        if ("attacker_observation" not in info) or ("defender_observation" not in info):
+            raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
 
-#         inner_observation: dict[  # type: ignore
-#             str, tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int]
-#         ] = info["gym_wrapper_inner_observations"]
-#         ghost_dones: dict[str, bool] = info["ghost_dones"]  # type: ignore
+        attacker_observation: tuple[  # type: ignore
+            np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]
+        ] = info["attacker_observation"]
 
-#         # `ghost_positions` holds positions of valid (not killed) ghosts.
-#         ghost_positions: dict[str, tuple[int, int]] = {
-#             ghost_name: inner_observation[ghost_name][1]
-#             for (ghost_name, ghost_done) in ghost_dones.items()
-#             if not ghost_done
-#         }
+        map_view, attacker_pos = attacker_observation
+        # Copy `map_view` to use it in preview generation loop.
+        copied_map_view = map_view.copy()
+        preview_attackers: list[np.ndarray[Any, np.dtype[np.int8]]] = []
+        for _ in range(self._preview_steps):
+            # First copy the current step attacker.
+            next_step_attacker = copied_map_view[ATTACKER_IDX].copy()
+            # Then fetch and apply actions based on current step.
+            action = self._attacker.peek_action((copied_map_view, attacker_pos))
+            if action == STAY:
+                pass
+            elif action == UP:
+                if attacker_pos[0] > 0:
+                    new_position = attacker_pos[0] - 1, attacker_pos[1]
+                    if copied_map_view[WALL_IDX][new_position] == 0:
+                        next_step_attacker[attacker_pos] -= 1
+                        next_step_attacker[new_position] += 1
+                        attacker_pos = new_position
+            elif action == DOWN:
+                if attacker_pos[0] < HEIGHT - 1:
+                    new_position = attacker_pos[0] + 1, attacker_pos[1]
+                    if copied_map_view[WALL_IDX][new_position] == 0:
+                        next_step_attacker[attacker_pos] -= 1
+                        next_step_attacker[new_position] += 1
+                        attacker_pos = new_position
+            elif action == LEFT:
+                if attacker_pos[1] > 0:
+                    new_position = attacker_pos[0], attacker_pos[1] - 1
+                    if copied_map_view[WALL_IDX][new_position] == 0:
+                        next_step_attacker[attacker_pos] -= 1
+                        next_step_attacker[new_position] += 1
+                        attacker_pos = new_position
+            elif action == RIGHT:
+                if attacker_pos[1] < WIDTH - 1:
+                    new_position = attacker_pos[0], attacker_pos[1] + 1
+                    if copied_map_view[WALL_IDX][new_position] == 0:
+                        next_step_attacker[attacker_pos] -= 1
+                        next_step_attacker[new_position] += 1
+                        attacker_pos = new_position
+            else:
+                raise Exception("Unreachable")
+            # Update the current step, and save it to `preview_ghosts`.
+            copied_map_view[ATTACKER_IDX] = next_step_attacker
+            preview_attackers.append(next_step_attacker[np.newaxis, ...])
 
-#         # Copy `map_view` to use it in preview generation loop.
-#         copied_map_view = map_view.copy()
-#         # And copy `remaining_power` too.
-#         copied_remaining_power = remaining_power
-#         preview_ghosts: list[np.ndarray[Any, np.dtype[np.int8]]] = []
-#         for _ in range(self._preview_steps):
-#             # First copy the current step ghosts.
-#             next_step_ghosts = copied_map_view[GHOST_IDX].copy()
-#             # Then fetch and apply actions based on current step.
-#             for ghost_name in ghost_positions:
-#                 ghost_position = ghost_positions[ghost_name]
-#                 ghost = self._ghosts[ghost_name]
-#                 action = ghost.get_action(
-#                     (copied_map_view, ghost_position, copied_remaining_power)
-#                 )
-#                 if action == STAY:
-#                     continue
-#                 if action == UP:
-#                     if ghost_position[0] <= 0:
-#                         continue
-#                     new_position = ghost_position[0] - 1, ghost_position[1]
-#                     if copied_map_view[WALL_IDX][new_position] != 0:
-#                         continue
-#                     next_step_ghosts[ghost_position] -= 1
-#                     next_step_ghosts[new_position] += 1
-#                     ghost_positions[ghost_name] = new_position
-#                     continue
-#                 if action == DOWN:
-#                     if ghost_position[0] >= HEIGHT - 1:
-#                         continue
-#                     new_position = ghost_position[0] + 1, ghost_position[1]
-#                     if copied_map_view[WALL_IDX][new_position] != 0:
-#                         continue
-#                     next_step_ghosts[ghost_position] -= 1
-#                     next_step_ghosts[new_position] += 1
-#                     ghost_positions[ghost_name] = new_position
-#                     continue
-#                 if action == LEFT:
-#                     if ghost_position[1] <= 0:
-#                         continue
-#                     new_position = ghost_position[0], ghost_position[1] - 1
-#                     if copied_map_view[WALL_IDX][new_position] != 0:
-#                         continue
-#                     next_step_ghosts[ghost_position] -= 1
-#                     next_step_ghosts[new_position] += 1
-#                     ghost_positions[ghost_name] = new_position
-#                     continue
-#                 if action == RIGHT:
-#                     if ghost_position[1] >= WIDTH - 1:
-#                         continue
-#                     new_position = ghost_position[0], ghost_position[1] + 1
-#                     if copied_map_view[WALL_IDX][new_position] != 0:
-#                         continue
-#                     next_step_ghosts[ghost_position] -= 1
-#                     next_step_ghosts[new_position] += 1
-#                     ghost_positions[ghost_name] = new_position
-#                     continue
-#                 raise Exception("Unreachable")
-#             # Update the current step, and save it to `preview_ghosts`.
-#             copied_map_view[GHOST_IDX] = next_step_ghosts
-#             preview_ghosts.append(next_step_ghosts[np.newaxis, ...])
-#             if copied_remaining_power > 0:
-#                 copied_remaining_power -= 1
+        # Get an action to step the attacker.
+        _ = self._attacker.get_action(observation=attacker_observation)
 
-#         augmented_map_view = np.concatenate([map_view] + preview_ghosts, axis=0)
+        augmented_map_view = np.concatenate([map_view] + preview_attackers, axis=0)
 
-#         self._last_observation = augmented_map_view, player_pos, remaining_power
+        self._last_observation = augmented_map_view, defender_pos
 
-#         return self._last_observation
+        return self._last_observation
 
-#     def step(self, action: np.int64) -> tuple[
-#         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int],
-#         float,
-#         bool,
-#         bool,
-#         dict[Any, Any],
-#     ]:
-#         observation, reward, truncation, termination, info = self.env.step(action)
-#         new_observation = self._observation(observation, info)
-#         return new_observation, float(reward), truncation, termination, info
+    def step(self, action: np.int64) -> tuple[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        float,
+        bool,
+        bool,
+        dict[Any, Any],
+    ]:
+        observation, reward, truncation, termination, info = self.env.step(action)
+        new_observation = self._observation(observation, info)
+        return new_observation, float(reward), truncation, termination, info
 
-#     def reset(  # type: ignore
-#         self, seed: int | None = None, options: dict[Any, Any] | None = None
-#     ) -> tuple[
-#         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int], int], dict[Any, Any]
-#     ]:
-#         observation, info = self.env.reset(seed=seed, options=options)
-#         if ("gym_wrapper_inner_observations" not in info) or (
-#             "ghost_dones" not in info
-#         ):
-#             raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
+    def reset(  # type: ignore
+        self, seed: int | None = None, options: dict[Any, Any] | None = None
+    ) -> tuple[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], dict[Any, Any]
+    ]:
+        self._attacker: AttackerAgentBase = self._attacker_builder(seed)
+        observation, info = self.env.reset(seed=seed, options=options)
 
-#         # Initialize `self._ghosts`.
-#         ghost_dones: dict[str, bool] = info["ghost_dones"]  # type: ignore
-#         self._ghosts: dict[str, GhostAgentBase] = {
-#             ghost_name: self._ghost_builder(ghost_name)
-#             for ghost_name in ghost_dones.keys()
-#         }
+        if ("attacker_observation" not in info) or ("defender_observation" not in info):
+            raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
 
-#         return self._observation(observation, info), info
+        return self._observation(observation, info), info
 
-#     def render(self):
-#         """
-#         Overrided `render()` function that masks away non-observable portions of the full observation.
+    def render(self):
+        """
+        Overrided `render()` function that masks away non-observable portions of the full observation.
 
-#         Raises:
-#             NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
+        Raises:
+            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
 
-#         Returns:
-#             np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
-#         """
-#         if self.render_mode == "ansi":
-#             raise NotImplementedError(
-#                 "I am too lazy to implement partial-observable text rendering."
-#             )
-#         elif self.render_mode == "rgb_array":
-#             image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
+        Returns:
+            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
+        """
+        if self.render_mode == "ansi":
+            raise NotImplementedError(
+                "I am too lazy to implement partial-observable text rendering."
+            )
+        elif self.render_mode == "rgb_array":
+            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
 
-#             assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
-#             assert self._last_observation is not None
-#             tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
-#                 (0, 2, 1, 3, 4)
-#             )
-#             map_view = self._last_observation[0]
-#             for step in range(self._preview_steps):
-#                 preview: np.ndarray[Any, np.dtype[np.uint8]] = map_view[5 + step]
-#                 tiled_image_with_warning = (
-#                     np.array(
-#                         [
-#                             int(
-#                                 255 * (self._preview_steps - step) / self._preview_steps
-#                             ),
-#                             0,
-#                             0,
-#                         ],
-#                         dtype=np.uint8,
-#                     )
-#                     + tiled_image
-#                 ) // 2
-#                 tiled_image = np.where(
-#                     preview[:, :, np.newaxis, np.newaxis, np.newaxis] > 0,
-#                     tiled_image_with_warning,
-#                     tiled_image,
-#                 )
-#             image = tiled_image.transpose((0, 2, 1, 3, 4)).reshape(
-#                 (HEIGHT * 3, WIDTH * 3, 3)
-#             )
-#             return image
+            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
+            assert self._last_observation is not None
+            tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
+                (0, 2, 1, 3, 4)
+            )
+            map_view = self._last_observation[0]
+            for step in range(self._preview_steps):
+                preview: np.ndarray[Any, np.dtype[np.uint8]] = map_view[5 + step]
+                tiled_image_with_warning = (
+                    np.array(
+                        [
+                            int(
+                                255 * (self._preview_steps - step) / self._preview_steps
+                            ),
+                            0,
+                            0,
+                        ],
+                        dtype=np.uint8,
+                    )
+                    + tiled_image
+                ) // 2
+                tiled_image = np.where(
+                    preview[:, :, np.newaxis, np.newaxis, np.newaxis] > 0,
+                    tiled_image_with_warning,
+                    tiled_image,
+                )
+            image = tiled_image.transpose((0, 2, 1, 3, 4)).reshape(
+                (HEIGHT * 3, WIDTH * 3, 3)
+            )
+            return image
 
 
 class StripWrapper(
@@ -335,7 +298,7 @@ class PartialObservabilityWrapper(
     ]
 ):
     """
-    Wrapper to merge obseravtion for decoy and exit. Intended to wrap `GymWrapper`.
+    Wrapper to merge obseravtion for decoy and exit. Intended to wrap `GymWrapper` or `PreviewWrapper`.
     """
 
     def __init__(
@@ -343,9 +306,10 @@ class PartialObservabilityWrapper(
         env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
     ):
         super().__init__(env)
+        n: int = self.env.observation_space.spaces[0].n[0]  # type: ignore
         self.observation_space = Tuple(
             (
-                MultiBinary((4, HEIGHT, WIDTH)),
+                MultiBinary((n - 1, HEIGHT, WIDTH)),  # type: ignore
                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
             )
         )
@@ -358,18 +322,17 @@ class PartialObservabilityWrapper(
         exits = observation[0][EXIT_IDX]
         merged_exits = decoys + exits
 
-        stack: list[np.ndarray[Any, np.dtype[np.int8]] | None] = [
-            None,
-            None,
-            None,
-            None,
-        ]
-        stack[0] = observation[0][WALL_IDX]
-        stack[1] = merged_exits
-        stack[2] = observation[0][ATTACKER_IDX]
-        stack[3] = observation[0][DEFENDER_IDX]
-        stack_: list[np.ndarray[Any, np.dtype[np.int8]]] = stack  # type: ignore
-        return (np.stack(stack_, axis=0), observation[1])
+        return (
+            np.concatenate(
+                [
+                    observation[0][0][np.newaxis, ...],
+                    merged_exits[np.newaxis, ...],
+                    observation[0][3:],
+                ],
+                axis=0,
+            ),
+            observation[1],
+        )
 
 
 class FrameStackWrapper(
@@ -391,9 +354,10 @@ class FrameStackWrapper(
         super().__init__(env)
         self._history_length: int = history_length
         self._history: list[np.ndarray[Any, np.dtype[np.int8]]] = []
+        n: int = self.env.observation_space.spaces[0].n[0]  # type: ignore
         self.observation_space = Tuple(
             (
-                MultiBinary((4 + 2 * self._history_length, HEIGHT, WIDTH)),
+                MultiBinary((n + 2 * self._history_length, HEIGHT, WIDTH)),  # type: ignore
                 Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
             )
         )

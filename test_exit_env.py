@@ -7,23 +7,14 @@ from exit import (
     RIGHT,
     DEFENDER,
     AttackerAgentBase,
-    UserAttacker,
-    IdleAttacker,
-    PursueAttacker,
     RandomPursueAttacker,
-    EvadeAttacker,
-    SwitchAttacker,
-    DistanceSwitchAttacker,
-    TimeSwitchAttacker,
-    StupidAttacker,
-    NaiveAttacker,
-    DecisiveNaiveAttacker,
-    DeceptiveAttacker,
+    DeceptiveRandomAttacker,
     GymWrapper,
     PartialObservabilityWrapper,
     StripWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
+    PreviewWrapper,
 )
 from rich import print
 import numpy as np
@@ -31,8 +22,12 @@ from PIL import Image
 
 
 def attacker_builder(seed: int | None) -> AttackerAgentBase:
-    return RandomPursueAttacker(
-        seed=seed, num_obstacles=2, max_obstacle_weight=20, ignore_defender=False
+    return DeceptiveRandomAttacker(
+        seed=seed,
+        min_safe_distance=3,
+        max_commit_distance=1,
+        stupidity=1,
+        ignore_defender=False,
     )
 
 
@@ -42,6 +37,7 @@ env = GymWrapper(
     attacker_builder,
 )
 # env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
+env = PreviewWrapper(env, attacker_builder, preview_steps=4)
 env = PartialObservabilityWrapper(env)
 env = FrameStackWrapper(env)
 env = StripWrapper(env)

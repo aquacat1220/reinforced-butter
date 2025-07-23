@@ -70,6 +70,7 @@ class AttackerAgentBase(ABC):
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
+        """Steps the inner state once, then set current state as a checkpoint. Return action."""
         return STAY
 
     @abstractmethod
@@ -77,10 +78,12 @@ class AttackerAgentBase(ABC):
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
+        """Steps inner state once without changing the checkpoint. Return action."""
         return STAY
 
     @abstractmethod
     def reset_peek(self):
+        """Reset inner state to checkpoint."""
         return
 
 
@@ -151,16 +154,15 @@ class PursueAttacker(AttackerAgentBase):
         # we are effectively sharing the same state in get and peek.
         # Thus we store the inner state of the rng for the get-timeline, and restore it before `get_action()`.
         self._rng = np.random.default_rng(seed)
-        self._rng_saved_state: dict[str, Any] | None = None
         self._target = target
         self._ignore_defender = ignore_defender
 
-    def get_action(
+        self._save_state()
+
+    def _get_action_internal(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        # Load the saved rng state.
-        self._load_saved_state()
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -207,29 +209,31 @@ class PursueAttacker(AttackerAgentBase):
                 min_candidates.append(candidate_action)
 
         action = self._rng.choice(min_candidates)
-        # `reset_peek()` to ensure the next peek is correct.
-        # `PursueAttacker` doesn't need this, as `get_action()` and `peek_action()` are sharing the same state and thus doesn't need syncing.
-        # But I'm doing this to keep things consistent.
-        self.reset_peek()
+        return action
+
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        self._load_state()
+        action = self._get_action_internal(observation=observation)
+        self._save_state()
         return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        if self._rng_saved_state is None:
-            # If this is the first peek after a get, save the state to restore it later.
-            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
-        return self.get_action(observation=observation)
+        return self._get_action_internal(observation=observation)
 
-    def _load_saved_state(self):
-        if self._rng_saved_state is None:
-            return
+    def _save_state(self):
+        self._rng_saved_state: dict[str, Any] = self._rng.bit_generator.state  # type: ignore
+
+    def _load_state(self):
         self._rng.bit_generator.state = self._rng_saved_state
-        self._rng_saved_state = None
 
     def reset_peek(self):
-        self._load_saved_state()
+        self._load_state()
         return
 
 
@@ -250,13 +254,14 @@ class RandomPursueAttacker(AttackerAgentBase):
         # we are effectively sharing the same state in get and peek.
         # Thus we store the inner state of the rng for the get-timeline, and restore it before `get_action()`.
         self._rng = np.random.default_rng(seed)
-        self._rng_saved_state: dict[str, Any] | None = None
         self._target = target
         self._selected_path: tuple[list[GridNode], list[int]] | None = None
-        self._saved_selected_path: tuple[list[GridNode], list[int]] | None = None
         self._ignore_defender = ignore_defender
         self._num_obstacles = num_obstacles
         self._obstacle_weight = max_obstacle_weight / num_obstacles
+
+        # Save state, so the first `get_action()` will start off here.
+        self._save_state()
 
     def _select_new_path(
         self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
@@ -292,7 +297,6 @@ class RandomPursueAttacker(AttackerAgentBase):
         obstacle_nodes: list[GridNode] = self._rng.choice(nodes, self._num_obstacles)  # type: ignore
         for obstacle_node in obstacle_nodes:  # type: ignore
             obstacle_node.weight = self._obstacle_weight
-            print(f"{obstacle_node.y}, {obstacle_node.x}")
 
         # Then fetch the route again.
         if self._ignore_defender:
@@ -321,6 +325,7 @@ class RandomPursueAttacker(AttackerAgentBase):
     def _ensure_path(
         self, observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]
     ):
+        # Ensures `self._selected_path` contains a valid, unblocked path from the attacker's position to the target's position.
         if self._selected_path is None:
             self._select_new_path(observation=observation)
             return
@@ -336,12 +341,11 @@ class RandomPursueAttacker(AttackerAgentBase):
                 return
         return
 
-    def get_action(
+    def _get_action_internal(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        # Load the saved rng state.
-        self._load_saved_state()
+        """Steps the inner state once, and returns an action."""
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -351,31 +355,43 @@ class RandomPursueAttacker(AttackerAgentBase):
         path: list[GridNode] = self._selected_path[0]
         actions: list[int] = self._selected_path[1]
         assert path[0].x == observation[1][1] and path[0].y == observation[1][0]
-        action = actions[0]
-        self._selected_path = (path[1:], actions[1:])
-        self.reset_peek()
+        if len(actions) == 0:
+            # We have reached the target.
+            # assert len(path) == 0
+            action = STAY
+        else:
+            action = actions[0]
+            self._selected_path = (path[1:], actions[1:])
+        return action
+
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        # Load the saved rng state.
+        self._load_state()
+        action = self._get_action_internal(observation=observation)
+        self._save_state()
         return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        if self._rng_saved_state is None:
-            # If this is the first peek after a get, save the state to restore it later.
-            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
-            self._saved_selected_path = self._selected_path
-        return self.get_action(observation=observation)
+        return self._get_action_internal(observation=observation)
 
-    def _load_saved_state(self):
-        if self._rng_saved_state is not None:
-            self._rng.bit_generator.state = self._rng_saved_state
-            self._rng_saved_state = None
-        if self._saved_selected_path is not None:
-            self._selected_path = self._saved_selected_path
-            self._saved_selected_path = None
+    def _save_state(self):
+        self._rng_saved_state: dict[str, Any] = self._rng.bit_generator.state  # type: ignore
+        self._saved_selected_path: tuple[list[GridNode], list[int]] | None = (
+            self._selected_path
+        )
+
+    def _load_state(self):
+        self._rng.bit_generator.state = self._rng_saved_state
+        self._selected_path = self._saved_selected_path
 
     def reset_peek(self):
-        self._load_saved_state()
+        self._load_state()
         return
 
 
@@ -385,14 +401,13 @@ class EvadeAttacker(AttackerAgentBase):
     def __init__(self, seed: int | None = None, target: np.int8 = DEFENDER):
         self._grid: Grid | None = None
         self._rng = np.random.default_rng(seed)
-        self._rng_saved_state: dict[str, Any] | None = None
         self._target = target
+        self._save_state()
 
-    def get_action(
+    def _get_action_internal(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        self.reset_peek()
         walls = observation[0][WALL_IDX]
         if self._grid is None:
             self._grid = Grid(matrix=1 - walls)
@@ -427,21 +442,55 @@ class EvadeAttacker(AttackerAgentBase):
 
         return self._rng.choice(max_candidates)
 
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        self._load_state()
+        action = self._get_action_internal(observation=observation)
+        self._save_state()
+        return action
+
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        if self._rng_saved_state is None:
-            # If this is the first peek after a get, save the state to restore it later.
-            self._rng_saved_state = self._rng.bit_generator.state  # type: ignore
-        return self.get_action(observation=observation)
+        return self._get_action_internal(observation=observation)
+
+    def _save_state(self):
+        self._rng_saved_state: dict[str, Any] = self._rng.bit_generator.state  # type: ignore
+
+    def _load_state(self):
+        self._rng.bit_generator.state = self._rng_saved_state
 
     def reset_peek(self):
-        if self._rng_saved_state is None:
-            return
-        self._rng.bit_generator.state = self._rng_saved_state
-        self._rng_saved_state = None
+        self._load_state()
         return
+
+
+class RandomSelectAttacker(AttackerAgentBase):
+    def __init__(
+        self,
+        seed: int | None = None,
+        choices: list[AttackerAgentBase] = [IdleAttacker()],
+    ):
+        self._rng = np.random.default_rng(seed)
+        self._inner: AttackerAgentBase = self._rng.choice(choices)  # type: ignore
+
+    def get_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        return self._inner.get_action(observation=observation)
+
+    def peek_action(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+    ) -> int:
+        return self._inner.peek_action(observation=observation)
+
+    def reset_peek(self):
+        self._inner.reset_peek()
 
 
 class SwitchAttacker(AttackerAgentBase):
@@ -588,34 +637,41 @@ class StupidAttacker(AttackerAgentBase):
     def __init__(self, inner: AttackerAgentBase, stupidity: int):
         self._inner = inner
         self._stupidity = stupidity
-        self._counter = 0
-        self._peek_counter = 0
+        self._counter: int = 0
+        self._save_state()
 
     def get_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
+        self._load_state()
         if self._counter % self._stupidity == 0:
             action = self._inner.get_action(observation=observation)
         else:
             action = STAY
         self._counter += 1
-        self.reset_peek()
+        self._save_state()
         return action
 
     def peek_action(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
     ) -> int:
-        if self._peek_counter % self._stupidity == 0:
+        if self._counter % self._stupidity == 0:
             action = self._inner.peek_action(observation=observation)
         else:
             action = STAY
-        self._peek_counter += 1
+        self._counter += 1
         return action
 
+    def _save_state(self):
+        self._saved_counter: int = self._counter
+
+    def _load_state(self):
+        self._counter = self._saved_counter
+
     def reset_peek(self):
-        self._peek_counter = self._counter
+        self._load_state()
         self._inner.reset_peek()
 
 

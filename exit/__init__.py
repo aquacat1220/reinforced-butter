@@ -1,3 +1,4 @@
+# type: ignore
 from .core import STAY, UP, DOWN, LEFT, RIGHT, WALL, EXIT, DECOY, ATTACKER, DEFENDER
 from .env import ExitEnv
 from .wrappers import (
@@ -6,6 +7,7 @@ from .wrappers import (
     PartialObservabilityWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
+    PreviewWrapper,
 )
 from .agents import (
     AttackerAgentBase,
