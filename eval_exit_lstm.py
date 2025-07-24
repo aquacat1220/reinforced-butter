@@ -3,6 +3,7 @@ from torch.distributions.categorical import Categorical
 import gymnasium as gym
 import numpy as np
 from rich import print
+from PIL import Image
 from exit import (
     ExitEnv,
     STAY,
@@ -16,11 +17,12 @@ from exit import (
     PartialObservabilityWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
+    PreviewWrapper,
     StripWrapper,
 )
 from train_exit_lstm import Agent, Args
 
-CHECKPOINT_PATH = "results/checkpoints/exit_env_v0__exit_env_lstm_5050_norandom_nostupid_short__1__1753183528/iter_1000.pt"
+CHECKPOINT_PATH = "results/checkpoints/1753294050__exit_env_v0__exit_env_lstm_5050_long__1/iter_12500.pt"
 
 
 def load_agent_from_checkpoint(
@@ -49,13 +51,13 @@ env = GymWrapper(
     # lambda: DecisiveNaiveAttacker(
     #     min_safe_distance=3, max_commit_distance=1, stupidity=1
     # ),
-    lambda: UserAttacker(),
+    lambda _: UserAttacker(),
 )
+env = PreviewWrapper(env, attacker_builder=lambda _: UserAttacker(), preview_steps=0)
 env = PartialObservabilityWrapper(env)
-env = FrameStackWrapper(env)
 env = StripWrapper(env)
 
-observation, _ = env.reset(seed=1221)
+observation, _ = env.reset(seed=1227)
 is_done: bool = False
 
 (agent, _) = load_agent_from_checkpoint(
@@ -73,6 +75,8 @@ lstm_state = (
 done = torch.zeros(1)  # batch of size 1
 
 while True:
+    image = Image.fromarray(env.render())  # type: ignore
+    image.save("observation_exit.png")
     if is_done:
         print("Environment terminated.")
         break

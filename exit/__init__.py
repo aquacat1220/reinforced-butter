@@ -22,6 +22,7 @@ from .agents import (
     StupidAttacker,
     NaiveAttacker,
     RandomNaiveAttacker,
+    RandomSelectAttacker,
     DecisiveNaiveAttacker,
     DecisiveRandomNaiveAttacker,
     DeceptiveAttacker,

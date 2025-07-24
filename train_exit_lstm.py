@@ -19,16 +19,17 @@ from exit import (
     GymWrapper,
     DeceptiveRandomAttacker,
     DecisiveRandomNaiveAttacker,
+    RandomSelectAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
-    FrameStackWrapper,
+    PreviewWrapper,
     DeterministicResetWrapper,
 )
 
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_lstm_5050_random_attacker"
+    exp_name: str = "exit_env_lstm_5050_long"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -44,7 +45,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    capture_interval: int = 200
+    capture_interval: int = 4000
     """capture video once every `capture_interval` episodes"""
     checkpoint: bool = True
     """whether to store checkpoints"""
@@ -54,15 +55,15 @@ class Args:
     # """number of steps to preview into the future"""
     att_def_distance_reward_coeff: float = 0.1
     """reward for getting 1 tile closer to the attacker"""
-    max_steps: int = 64
+    max_steps: int = 128
     min_safe_distance: int = 3
     """the minimum distance the attacker considers to be safe to get closer to the defender"""
     max_commit_distance: int = 1
     """the maximum distance the attacker will commit to its target, ignoring the defender"""
-    stop_deception_after: int = 32
+    stop_deception_after: int = 64
     """attacker will stop deception after `stop_deception_after` steps"""
-    history_length: int = 2
-    """length of the stacked history"""
+    preview_steps: int = 0
+    """number of steps to preview"""
     random_map: bool = False
     """whether to randomize map layout"""
     ignore_defender: bool = False
@@ -129,30 +130,33 @@ def make_env(
     min_safe_distance: int,
     max_commit_distance: int,
     stop_deception_after: int,
-    history_length: int,
+    preview_steps: int,
     random_map: bool,
     ignore_defender: bool,
     att_exit_distance_reward_coeff: float,
 ):
     def thunk():
         # ghost_builder = lambda _: StupidPursueGhost(stupidity)
-        def naive_attacker_builder(seed: int | None) -> DecisiveRandomNaiveAttacker:
-            return DecisiveRandomNaiveAttacker(
+        def attacker_builder(seed: int | None) -> RandomSelectAttacker:
+            return RandomSelectAttacker(
                 seed=seed,
-                min_safe_distance=min_safe_distance,
-                max_commit_distance=max_commit_distance,
-                stupidity=stupidity,
-                ignore_defender=ignore_defender,
-            )
-
-        def deceptive_attacker_builder(seed: int | None) -> DeceptiveRandomAttacker:
-            return DeceptiveRandomAttacker(
-                seed=seed,
-                min_safe_distance=min_safe_distance,
-                max_commit_distance=max_commit_distance,
-                stupidity=stupidity,
-                ignore_defender=ignore_defender,
-                stop_deception_after=stop_deception_after,
+                choices=[
+                    DecisiveRandomNaiveAttacker(
+                        seed=seed,
+                        min_safe_distance=min_safe_distance,
+                        max_commit_distance=max_commit_distance,
+                        stupidity=stupidity,
+                        ignore_defender=ignore_defender,
+                    ),
+                    DeceptiveRandomAttacker(
+                        seed=seed,
+                        min_safe_distance=min_safe_distance,
+                        max_commit_distance=max_commit_distance,
+                        stupidity=stupidity,
+                        ignore_defender=ignore_defender,
+                        stop_deception_after=stop_deception_after,
+                    ),
+                ],
             )
 
         if capture_video and idx == 0:
@@ -164,9 +168,13 @@ def make_env(
                 att_exit_distance_reward_coeff=att_exit_distance_reward_coeff,
                 max_steps=max_steps,
             )
-            env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
+            env = GymWrapper(env, attacker_builder=attacker_builder)
+            env = PreviewWrapper(
+                env,
+                attacker_builder=attacker_builder,
+                preview_steps=preview_steps,
+            )
             env = PartialObservabilityWrapper(env)
-            env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
             env = DeterministicResetWrapper(env)
             env = gym.wrappers.RecordVideo(
@@ -184,12 +192,13 @@ def make_env(
                 att_exit_distance_reward_coeff=att_exit_distance_reward_coeff,
                 max_steps=max_steps,
             )
-            if idx % 2 == 0:
-                env = GymWrapper(env, attacker_builder=deceptive_attacker_builder)
-            else:
-                env = GymWrapper(env, attacker_builder=naive_attacker_builder)
+            env = GymWrapper(env, attacker_builder=attacker_builder)
+            env = PreviewWrapper(
+                env,
+                attacker_builder=attacker_builder,
+                preview_steps=preview_steps,
+            )
             env = PartialObservabilityWrapper(env)
-            env = FrameStackWrapper(env, history_length=history_length)
             env = StripWrapper(env)
             env = DeterministicResetWrapper(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -284,7 +293,7 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{int(time.time())}__{args.env_id}__{args.exp_name}__{args.seed}"
     if args.track:
         import wandb
 
@@ -332,7 +341,7 @@ if __name__ == "__main__":
                 min_safe_distance=args.min_safe_distance,
                 max_commit_distance=args.max_commit_distance,
                 stop_deception_after=args.stop_deception_after,
-                history_length=args.history_length,
+                preview_steps=args.preview_steps,
                 random_map=args.random_map,
                 ignore_defender=args.ignore_defender,
                 att_exit_distance_reward_coeff=args.att_exit_distance_reward_coeff,
