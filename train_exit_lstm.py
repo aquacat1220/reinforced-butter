@@ -22,7 +22,7 @@ from exit import (
     RandomSelectAttacker,
     StripWrapper,
     PartialObservabilityWrapper,
-    PreviewWrapper,
+    OraclePreviewWrapper,
     DeterministicResetWrapper,
 )
 
@@ -169,7 +169,7 @@ def make_env(
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=attacker_builder)
-            env = PreviewWrapper(
+            env = OraclePreviewWrapper(
                 env,
                 attacker_builder=attacker_builder,
                 preview_steps=preview_steps,
@@ -193,7 +193,7 @@ def make_env(
                 max_steps=max_steps,
             )
             env = GymWrapper(env, attacker_builder=attacker_builder)
-            env = PreviewWrapper(
+            env = OraclePreviewWrapper(
                 env,
                 attacker_builder=attacker_builder,
                 preview_steps=preview_steps,

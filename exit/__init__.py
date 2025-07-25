@@ -7,7 +7,8 @@ from .wrappers import (
     PartialObservabilityWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
-    PreviewWrapper,
+    OraclePreviewWrapper,
+    StupidPreviewWrapper,
 )
 from .agents import (
     AttackerAgentBase,

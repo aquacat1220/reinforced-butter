@@ -17,7 +17,7 @@ from exit import (
     PartialObservabilityWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
-    PreviewWrapper,
+    OraclePreviewWrapper,
     StripWrapper,
 )
 from train_exit_lstm import Agent, Args
@@ -53,7 +53,9 @@ env = GymWrapper(
     # ),
     lambda _: UserAttacker(),
 )
-env = PreviewWrapper(env, attacker_builder=lambda _: UserAttacker(), preview_steps=0)
+env = OraclePreviewWrapper(
+    env, attacker_builder=lambda _: UserAttacker(), preview_steps=0
+)
 env = PartialObservabilityWrapper(env)
 env = StripWrapper(env)
 

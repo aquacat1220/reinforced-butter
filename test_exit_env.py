@@ -14,7 +14,8 @@ from exit import (
     StripWrapper,
     FrameStackWrapper,
     DeterministicResetWrapper,
-    PreviewWrapper,
+    OraclePreviewWrapper,
+    StupidPreviewWrapper,
 )
 from rich import print
 import numpy as np
@@ -37,9 +38,8 @@ env = GymWrapper(
     attacker_builder,
 )
 # env = GymWrapper(env, lambda: StupidAttacker(NaiveExitAttacker(), stupidity=2))
-env = PreviewWrapper(env, attacker_builder, preview_steps=4)
+env = StupidPreviewWrapper(env, preview_steps=4)
 env = PartialObservabilityWrapper(env)
-env = FrameStackWrapper(env)
 env = StripWrapper(env)
 env = DeterministicResetWrapper(env)
 # observation, _ = env.reset()
@@ -47,7 +47,7 @@ observation, _ = env.reset(seed=1220, options={"increment_seed_by": 2})
 is_done: bool = False
 
 while True:
-    # print(observation)
+    print(observation[4])
     image = Image.fromarray(env.render())  # type: ignore
     image.save("observation_exit.png")
     if is_done:
