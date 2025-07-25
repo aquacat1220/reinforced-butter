@@ -29,7 +29,7 @@ from exit import (
 
 @dataclass
 class Args:
-    exp_name: str = "exit_env_lstm_5050_long"
+    exp_name: str = "exit_env_lstm_5050_long_w_preview_4"
     """the name of this experiment"""
     seed: int = 1
     """seed of the experiment"""
@@ -62,7 +62,7 @@ class Args:
     """the maximum distance the attacker will commit to its target, ignoring the defender"""
     stop_deception_after: int = 64
     """attacker will stop deception after `stop_deception_after` steps"""
-    preview_steps: int = 0
+    preview_steps: int = 4
     """number of steps to preview"""
     random_map: bool = False
     """whether to randomize map layout"""
