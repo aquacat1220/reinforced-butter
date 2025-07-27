@@ -23,6 +23,7 @@ from exit import (
     StripWrapper,
     PartialObservabilityWrapper,
     OraclePreviewWrapper,
+    StupidPreviewWrapper,
     DeterministicResetWrapper,
 )
 

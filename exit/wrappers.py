@@ -443,8 +443,10 @@ class PartialObservabilityWrapper(
     def __init__(
         self,
         env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
+        render_partial: bool = False,
     ):
         super().__init__(env)
+        self._render_partial = render_partial
         n: int = self.env.observation_space.spaces[0].n[0]  # type: ignore
         self.observation_space = Tuple(
             (
@@ -472,6 +474,36 @@ class PartialObservabilityWrapper(
             ),
             observation[1],
         )
+
+    def render(self) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        """
+        Overrided `render()` function that renders the true exit and the decoy.
+
+        Raises:
+            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
+
+        Returns:
+            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
+        """
+        if not self._render_partial:
+            return self.env.render()  # type: ignore
+        if self.render_mode == "ansi":
+            raise NotImplementedError(
+                "I am too lazy to implement partial-observable text rendering."
+            )
+        elif self.render_mode == "rgb_array":
+            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
+
+            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
+            yellow_pixels = np.all(
+                image == np.array([200, 200, 0], dtype=np.uint8), axis=-1
+            )
+            image = np.where(
+                yellow_pixels[:, :, np.newaxis],
+                np.array([0, 200, 0], dtype=np.uint8),
+                image,
+            )
+            return image
 
 
 class FrameStackWrapper(
