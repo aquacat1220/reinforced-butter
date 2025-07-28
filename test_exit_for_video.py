@@ -36,14 +36,14 @@ def attacker_builder(seed: int | None) -> AttackerAgentBase:
 
 # %% ---------------- Create the environment. ----------------
 env = ExitEnv(render_mode="rgb_array", random_map=False, max_steps=32)
-
+RENDER_AS_DEFENDER = False
 # %% ---------------- Wrap the environment with "wrappers". ----------------
 env = GymWrapper(
     env,
     attacker_builder,
 )
 # Set `render_partial` to `True` to make the decoy undistinguishable to the real exit.
-env = PartialObservabilityWrapper(env, render_partial=False)
+env = PartialObservabilityWrapper(env, render_partial=RENDER_AS_DEFENDER)
 env = StripWrapper(env)
 env = DeterministicResetWrapper(env)
 # %% ---------------- Reset the environment. ----------------
@@ -89,4 +89,4 @@ while True:
     observation, reward, terminated, truncated, _ = env.step(np.int64(action))
     is_done = terminated or truncated
 
-    # %% ---------------- ... and repeat until the environment terminates! ----------------
+    # %% ---------------- ... and repeat until termination! ----------------
