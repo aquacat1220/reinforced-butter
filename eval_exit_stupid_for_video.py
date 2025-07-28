@@ -13,6 +13,8 @@ from exit import (
     LEFT,
     RIGHT,
     UserAttacker,
+    DeceptiveRandomAttacker,
+    DecisiveRandomNaiveAttacker,
     GymWrapper,
     PartialObservabilityWrapper,
     StupidPreviewWrapper,
@@ -20,7 +22,7 @@ from exit import (
 )
 from train_exit_lstm import Agent, Args
 
-CHECKPOINT_PATH = "results/checkpoints/1753294050__exit_env_v0__exit_env_lstm_5050_long__1/iter_12500.pt"
+CHECKPOINT_PATH = "results/checkpoints/1753437972__exit_env_v0__exit_env_lstm_5050_long_w_stupid_preview_4__1/iter_30000.pt"
 
 
 def load_agent_from_checkpoint(
@@ -46,13 +48,24 @@ def load_agent_from_checkpoint(
 # %% ---------------- Create the environment. ----------------
 env = ExitEnv(render_mode="rgb_array", random_map=False, max_steps=64)
 
-# %% ---------------- Wrap the environment with "wrappers". ----------------
+
+# %% !!-------------- Wrap the environment with "wrappers". --------------!!
+def attacker_builder(seed: int | None):
+    return DeceptiveRandomAttacker(
+        seed=seed,
+        min_safe_distance=3,
+        max_commit_distance=1,
+        stupidity=1,
+        stop_deception_after=32,
+    )
+    # return DecisiveRandomNaiveAttacker(
+    #     seed=seed, min_safe_distance=3, max_commit_distance=1, stupidity=1
+    # )
+
+
 env = GymWrapper(
     env,
-    # lambda: DecisiveNaiveAttacker(
-    #     min_safe_distance=3, max_commit_distance=1, stupidity=1
-    # ),
-    lambda _: UserAttacker(),
+    attacker_builder=attacker_builder,
 )
 env = StupidPreviewWrapper(env, preview_steps=4)
 env = PartialObservabilityWrapper(env)
@@ -73,8 +86,9 @@ lstm_state = (
 done = torch.zeros(1)  # batch of size 1
 
 # %% ---------------- Reset the environment. ----------------
-observation, _ = env.reset(seed=1227)
+observation, _ = env.reset(seed=1223)
 is_done: bool = False
+step = 0
 # %% ---------------- Main loop. ----------------
 while True:
     # %% ---------------- Render the current observation. ----------------
@@ -83,7 +97,9 @@ while True:
     if is_done:
         print("Environment terminated.")
         break
-
+    print(f"{64 - step} turns remaining!")
+    step += 1
+    input("Press Enter for next step")
     # %% !!-------------- Fetch action from loaded agent. --------------!!
     obs_tensor = torch.tensor(observation[np.newaxis, ...], dtype=torch.float32)
     with torch.no_grad():

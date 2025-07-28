@@ -139,6 +139,8 @@ class OraclePreviewWrapper(
         ] = info["attacker_observation"]
 
         map_view, attacker_pos = attacker_observation
+        exit_pos = np.argwhere(map_view[EXIT_IDX])[0]
+        exit_pos: tuple[int, int] = (exit_pos[0], exit_pos[1])
         # Copy `map_view` to use it in preview generation loop.
         copied_map_view = map_view.copy()
         preview_attackers: list[np.ndarray[Any, np.dtype[np.int8]]] = []
@@ -146,7 +148,11 @@ class OraclePreviewWrapper(
             # First copy the current step attacker.
             next_step_attacker = copied_map_view[ATTACKER_IDX].copy()
             # Then fetch and apply actions based on current step.
-            action = self._attacker.peek_action((copied_map_view, attacker_pos))
+            if attacker_pos == (-1, -1):
+                # The last performed action ended the game. Don't peek into a null future.
+                action = STAY
+            else:
+                action = self._attacker.peek_action((copied_map_view, attacker_pos))
             if action == STAY:
                 pass
             elif action == UP:
@@ -182,9 +188,13 @@ class OraclePreviewWrapper(
             # Update the current step, and save it to `preview_ghosts`.
             copied_map_view[ATTACKER_IDX] = next_step_attacker
             preview_attackers.append(next_step_attacker[np.newaxis, ...])
+            if attacker_pos == defender_pos or attacker_pos == exit_pos:
+                # The game must have ended here. Set `attacker_pos` to `(-1, -1)`.
+                attacker_pos = (-1, -1)
 
-        # Get an action to step the attacker.
-        _ = self._attacker.get_action(observation=attacker_observation)
+        if attacker_pos != (-1, -1):
+            # Get an action to step the attacker.
+            _ = self._attacker.get_action(observation=attacker_observation)
 
         augmented_map_view = np.concatenate([map_view] + preview_attackers, axis=0)
 
