@@ -1,3 +1,4 @@
+# %% ---------------- Imports and declarations. ----------------
 from exit import (
     ExitEnv,
     STAY,
@@ -33,21 +34,28 @@ def attacker_builder(seed: int | None) -> AttackerAgentBase:
     return RandomPursueAttacker(seed=seed)
 
 
+# %% ---------------- Create the environment. ----------------
 env = ExitEnv(render_mode="rgb_array", random_map=False, max_steps=32)
+RENDER_AS_DEFENDER = False
+# %% ---------------- Wrap the environment with "wrappers". ----------------
 env = GymWrapper(
     env,
     attacker_builder,
 )
-# env = StupidPreviewWrapper(env, preview_steps=4)
-env = PartialObservabilityWrapper(env, render_partial=True)
-# env = PartialObservabilityWrapper(env, render_partial=False)
+env = StupidPreviewWrapper(env, preview_steps=4)
+# env = OraclePreviewWrapper(env, preview_steps=4, attacker_builder=attacker_builder)
+# Set `render_partial` to `True` to make the decoy undistinguishable to the real exit.
+env = PartialObservabilityWrapper(env, render_partial=RENDER_AS_DEFENDER)
 env = StripWrapper(env)
 env = DeterministicResetWrapper(env)
-# observation, _ = env.reset()
+# %% ---------------- Reset the environment. ----------------
 observation, _ = env.reset(seed=1220, options={"increment_seed_by": 2})
 is_done: bool = False
 step = 0
+
+# %% ---------------- Main loop. ----------------
 while True:
+    # %% ---------------- Render the current observation. ----------------
     print(f"{32 - step} turns remaining!")
     step += 1
     # print(observation[4])
@@ -60,6 +68,8 @@ while True:
         else:
             print("Defender wins!")
         break
+
+    # %% ---------------- Fetch action from user input. ----------------
     action = input("Select action: ")
     if action == "s" or action == "":
         action = STAY
@@ -76,5 +86,9 @@ while True:
         continue
     else:
         continue
+
+    # %% ---------------- Feed the action to the environment. ----------------
     observation, reward, terminated, truncated, _ = env.step(np.int64(action))
     is_done = terminated or truncated
+
+    # %% ---------------- ... and repeat until termination! ----------------

@@ -95,7 +95,7 @@ class GymWrapper(
         return self.env.render()
 
 
-class OraclePreviewWrapper(
+class PreviewWrapper(
     Wrapper[
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
         np.int64,
@@ -104,13 +104,12 @@ class OraclePreviewWrapper(
     ]
 ):
     """
-    Wrapper to add a preview of expected attacker behavior.
+    Wrapper to add a preview. Base class for all preview wrappers.
     """
 
     def __init__(
         self,
         env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
-        attacker_builder: Callable[[int | None], AttackerAgentBase],
         preview_steps: int = 2,
     ):
         super().__init__(env)
@@ -122,13 +121,119 @@ class OraclePreviewWrapper(
         )
         self.action_space = Discrete(5)
         self._preview_steps = preview_steps
-        self._attacker_builder = attacker_builder
+
+    def generate_previews(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        info: dict[Any, Any],
+    ) -> np.ndarray[Any, np.dtype[np.intp]]:
+        return np.array([])
 
     def _observation(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
         info: dict[Any, Any],
     ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]:
+        preview_positionss = self.generate_previews(observation=observation, info=info)
+        preview_attackers = np.zeros(
+            (self._preview_steps, HEIGHT, WIDTH), dtype=np.int8
+        )
+
+        preview_attackers[tuple(preview_positionss.T)] = 1
+
+        augmented_map_view = np.concatenate([observation[0], preview_attackers], axis=0)
+
+        self._last_observation = augmented_map_view, observation[1]
+
+        return self._last_observation
+
+    def step(self, action: np.int64) -> tuple[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        float,
+        bool,
+        bool,
+        dict[Any, Any],
+    ]:
+        observation, reward, truncation, termination, info = self.env.step(action)
+        new_observation = self._observation(observation, info)
+        return new_observation, float(reward), truncation, termination, info
+
+    def reset(  # type: ignore
+        self, seed: int | None = None, options: dict[Any, Any] | None = None
+    ) -> tuple[
+        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], dict[Any, Any]
+    ]:
+        observation, info = self.env.reset(seed=seed, options=options)
+
+        if ("attacker_observation" not in info) or ("defender_observation" not in info):
+            raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
+
+        return self._observation(observation, info), info
+
+    def render(self):
+        """
+        Overrided `render()` function that masks away non-observable portions of the full observation.
+
+        Raises:
+            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
+
+        Returns:
+            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
+        """
+        if self.render_mode == "ansi":
+            raise NotImplementedError(
+                "I am too lazy to implement partial-observable text rendering."
+            )
+        elif self.render_mode == "rgb_array":
+            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
+
+            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
+            assert self._last_observation is not None
+            tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
+                (0, 2, 1, 3, 4)
+            )
+            map_view = self._last_observation[0]
+            previews = map_view[5:]
+            steps = np.arange(self._preview_steps, 0, -1)[:, np.newaxis, np.newaxis]
+            previews = previews * steps
+            previews: np.ndarray[Any, np.dtype[np.int8]] = previews.max(axis=0)
+            preview_intensities = previews / (self._preview_steps + 1)
+            tiled_previews = preview_intensities[
+                :, :, np.newaxis, np.newaxis, np.newaxis
+            ] * np.array([255, 0, 0])
+            tiled_overlay = (tiled_image + tiled_previews) // 2
+            tiled_image = np.where(
+                previews[:, :, np.newaxis, np.newaxis, np.newaxis] > 0,
+                tiled_overlay,
+                tiled_image,
+            )
+            image = (
+                tiled_image.astype(np.uint8)
+                .transpose((0, 2, 1, 3, 4))
+                .reshape((HEIGHT * 3, WIDTH * 3, 3))
+            )
+            return image
+
+
+class OraclePreviewWrapper(PreviewWrapper):
+    """
+    Wrapper to add a preview of expected attacker behavior.
+    """
+
+    def __init__(
+        self,
+        env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
+        attacker_builder: Callable[[int | None], AttackerAgentBase],
+        preview_steps: int = 2,
+    ):
+        super().__init__(env, preview_steps=preview_steps)
+        self._attacker_builder = attacker_builder
+
+    def generate_previews(
+        self,
+        observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
+        info: dict[Any, Any],
+    ) -> np.ndarray[Any, np.dtype[np.intp]]:
         _, defender_pos = observation
 
         if ("attacker_observation" not in info) or ("defender_observation" not in info):
@@ -144,6 +249,7 @@ class OraclePreviewWrapper(
         # Copy `map_view` to use it in preview generation loop.
         copied_map_view = map_view.copy()
         preview_attackers: list[np.ndarray[Any, np.dtype[np.int8]]] = []
+        peeked_once: bool = False
         for _ in range(self._preview_steps):
             # First copy the current step attacker.
             next_step_attacker = copied_map_view[ATTACKER_IDX].copy()
@@ -152,6 +258,7 @@ class OraclePreviewWrapper(
                 # The last performed action ended the game. Don't peek into a null future.
                 action = STAY
             else:
+                peeked_once = True
                 action = self._attacker.peek_action((copied_map_view, attacker_pos))
             if action == STAY:
                 pass
@@ -187,31 +294,17 @@ class OraclePreviewWrapper(
                 raise Exception("Unreachable")
             # Update the current step, and save it to `preview_ghosts`.
             copied_map_view[ATTACKER_IDX] = next_step_attacker
-            preview_attackers.append(next_step_attacker[np.newaxis, ...])
+            preview_attackers.append(next_step_attacker)
             if attacker_pos == defender_pos or attacker_pos == exit_pos:
                 # The game must have ended here. Set `attacker_pos` to `(-1, -1)`.
                 attacker_pos = (-1, -1)
 
-        if attacker_pos != (-1, -1):
+        if peeked_once:
             # Get an action to step the attacker.
             _ = self._attacker.get_action(observation=attacker_observation)
 
-        augmented_map_view = np.concatenate([map_view] + preview_attackers, axis=0)
-
-        self._last_observation = augmented_map_view, defender_pos
-
-        return self._last_observation
-
-    def step(self, action: np.int64) -> tuple[
-        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-        float,
-        bool,
-        bool,
-        dict[Any, Any],
-    ]:
-        observation, reward, truncation, termination, info = self.env.step(action)
-        new_observation = self._observation(observation, info)
-        return new_observation, float(reward), truncation, termination, info
+        preview_attackers_np = np.array(preview_attackers)
+        return np.argwhere(preview_attackers_np == 1)
 
     def reset(  # type: ignore
         self, seed: int | None = None, options: dict[Any, Any] | None = None
@@ -219,90 +312,19 @@ class OraclePreviewWrapper(
         tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], dict[Any, Any]
     ]:
         self._attacker: AttackerAgentBase = self._attacker_builder(seed)
-        observation, info = self.env.reset(seed=seed, options=options)
-
-        if ("attacker_observation" not in info) or ("defender_observation" not in info):
-            raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
-
-        return self._observation(observation, info), info
-
-    def render(self):
-        """
-        Overrided `render()` function that masks away non-observable portions of the full observation.
-
-        Raises:
-            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
-
-        Returns:
-            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
-        """
-        if self.render_mode == "ansi":
-            raise NotImplementedError(
-                "I am too lazy to implement partial-observable text rendering."
-            )
-        elif self.render_mode == "rgb_array":
-            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
-
-            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
-            assert self._last_observation is not None
-            tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
-                (0, 2, 1, 3, 4)
-            )
-            map_view = self._last_observation[0]
-            previews = map_view[5:]
-            steps = np.arange(self._preview_steps, 0, -1)[:, np.newaxis, np.newaxis]
-            previews = previews * steps
-            previews: np.ndarray[Any, np.dtype[np.int8]] = previews.max(axis=0)
-            preview_intensities = previews / (self._preview_steps + 1)
-            tiled_previews = preview_intensities[
-                :, :, np.newaxis, np.newaxis, np.newaxis
-            ] * np.array([255, 0, 0])
-            tiled_overlay = (tiled_image + tiled_previews) // 2
-            tiled_image = np.where(
-                previews[:, :, np.newaxis, np.newaxis, np.newaxis] > 0,
-                tiled_overlay,
-                tiled_image,
-            )
-            image = (
-                tiled_image.astype(np.uint8)
-                .transpose((0, 2, 1, 3, 4))
-                .reshape((HEIGHT * 3, WIDTH * 3, 3))
-            )
-            return image
+        return super().reset(seed=seed, options=options)
 
 
-class StupidPreviewWrapper(
-    Wrapper[
-        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-        np.int64,
-        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-        np.int64,
-    ]
-):
+class StupidPreviewWrapper(PreviewWrapper):
     """
     Wrapper to add a preview, but with complete random attacker movement.
     """
 
-    def __init__(
-        self,
-        env: Env[tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], np.int64],
-        preview_steps: int = 2,
-    ):
-        super().__init__(env)
-        self.observation_space = Tuple(
-            (
-                MultiBinary((5 + preview_steps, HEIGHT, WIDTH)),
-                Tuple((Discrete(HEIGHT), Discrete(WIDTH))),
-            )
-        )
-        self.action_space = Discrete(5)
-        self._preview_steps = preview_steps
-
-    def _observation(
+    def generate_previews(
         self,
         observation: tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
         info: dict[Any, Any],
-    ) -> tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]]:
+    ) -> np.ndarray[Any, np.dtype[np.intp]]:
         _, defender_pos = observation
 
         if ("attacker_observation" not in info) or ("defender_observation" not in info):
@@ -315,11 +337,11 @@ class StupidPreviewWrapper(
         map_view, attacker_pos = attacker_observation
         # Copy `map_view` to use it in preview generation loop.
         walls = map_view[WALL_IDX]
-        zeros = np.zeros_like(walls)
         possible_attacker_positions = [attacker_pos]
         moves = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]
+        previews: list[tuple[int, int, int]] = []
         preview_attackers: list[np.ndarray[Any, np.dtype[np.int8]]] = []
-        for _ in range(self._preview_steps):
+        for i in range(self._preview_steps):
             new_attacker_positions: list[tuple[int, int]] = []
             for possible_attacker_position in possible_attacker_positions:
                 for move in moves:
@@ -333,85 +355,10 @@ class StupidPreviewWrapper(
                         and walls[h, w] == 0
                     ):
                         new_attacker_positions.append((h, w))
+                        previews.append((i, h, w))
             possible_attacker_positions = new_attacker_positions
-            attackers = zeros.copy()
-            for possible_attacker_position in possible_attacker_positions:
-                attackers[possible_attacker_position] = 1
 
-            preview_attackers.append(attackers[np.newaxis, ...])
-
-        augmented_map_view = np.concatenate([map_view] + preview_attackers, axis=0)
-
-        self._last_observation = augmented_map_view, defender_pos
-
-        return self._last_observation
-
-    def step(self, action: np.int64) -> tuple[
-        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]],
-        float,
-        bool,
-        bool,
-        dict[Any, Any],
-    ]:
-        observation, reward, truncation, termination, info = self.env.step(action)
-        new_observation = self._observation(observation, info)
-        return new_observation, float(reward), truncation, termination, info
-
-    def reset(  # type: ignore
-        self, seed: int | None = None, options: dict[Any, Any] | None = None
-    ) -> tuple[
-        tuple[np.ndarray[Any, np.dtype[np.int8]], tuple[int, int]], dict[Any, Any]
-    ]:
-        observation, info = self.env.reset(seed=seed, options=options)
-
-        if ("attacker_observation" not in info) or ("defender_observation" not in info):
-            raise Exception("`PreviewWrapper` is intended to wrap `GymWrapper`.")
-
-        return self._observation(observation, info), info
-
-    def render(self):
-        """
-        Overrided `render()` function that masks away non-observable portions of the full observation.
-
-        Raises:
-            NotImplementedError: ANSI render mode is not supported, and will raise an runtime exception.
-
-        Returns:
-            np.ndarray[Any, np.dtype[np.uint8]]: A color image of shape `(HEIGHT * 3, WIDTH * 3, 3)`.
-        """
-        if self.render_mode == "ansi":
-            raise NotImplementedError(
-                "I am too lazy to implement partial-observable text rendering."
-            )
-        elif self.render_mode == "rgb_array":
-            image: np.ndarray[Any, np.dtype[np.uint8]] = self.env.render()  # type: ignore
-
-            assert image.shape == (HEIGHT * 3, WIDTH * 3, 3)
-            assert self._last_observation is not None
-            tiled_image = image.reshape((HEIGHT, 3, WIDTH, 3, 3)).transpose(
-                (0, 2, 1, 3, 4)
-            )
-            map_view = self._last_observation[0]
-            previews = map_view[5:]
-            steps = np.arange(self._preview_steps, 0, -1)[:, np.newaxis, np.newaxis]
-            previews = previews * steps
-            previews: np.ndarray[Any, np.dtype[np.int8]] = previews.max(axis=0)
-            preview_intensities = previews / (self._preview_steps + 1)
-            tiled_previews = preview_intensities[
-                :, :, np.newaxis, np.newaxis, np.newaxis
-            ] * np.array([255, 0, 0])
-            tiled_overlay = (tiled_image + tiled_previews) // 2
-            tiled_image = np.where(
-                previews[:, :, np.newaxis, np.newaxis, np.newaxis] > 0,
-                tiled_overlay,
-                tiled_image,
-            )
-            image = (
-                tiled_image.astype(np.uint8)
-                .transpose((0, 2, 1, 3, 4))
-                .reshape((HEIGHT * 3, WIDTH * 3, 3))
-            )
-            return image
+        return np.array(previews)
 
 
 class StripWrapper(
