@@ -75,7 +75,7 @@ class ExitEnv(
         self.render_mode = render_mode
         self._att_def_distance_reward_coeff = att_def_distance_reward_coeff
         self._att_exit_distance_reward_coeff = att_exit_distance_reward_coeff
-        self._max_steps = max_steps
+        self.max_steps = max_steps
         self._core = ExitCore(random_map=random_map)
 
     def _name_to_agent_type(self, agent_name: str) -> AgentType | None:
@@ -204,7 +204,7 @@ class ExitEnv(
         dict[str, dict[Any, Any]],
     ]:
         self._step += 1
-        if self._step > self._max_steps:
+        if self._step > self.max_steps:
             raise Exception("`step()` called after environment termination.")
         for agent_name, action in actions.items():
             agent = self._name_to_agent_type(agent_name)
@@ -232,7 +232,7 @@ class ExitEnv(
             # Defender doesn't want attacker to get close to the exit.
             reward += self._att_exit_distance_reward_coeff * delta_att_exit_distance
 
-        if (not self._core.terminated) and (self._step >= self._max_steps):
+        if (not self._core.terminated) and (self._step >= self.max_steps):
             reward += WIN_REWARD
 
         rewards: dict[str, float] = {
@@ -241,10 +241,8 @@ class ExitEnv(
         }
 
         dones: dict[str, bool] = {
-            self.attacker_name: self._core.terminated
-            or (self._step >= self._max_steps),
-            self.defender_name: self._core.terminated
-            or (self._step >= self._max_steps),
+            self.attacker_name: self._core.terminated or (self._step >= self.max_steps),
+            self.defender_name: self._core.terminated or (self._step >= self.max_steps),
         }
 
         return self._get_observation(), rewards, dones, dones, self._get_empty_infos()
@@ -291,13 +289,13 @@ class ExitEnv(
                 elif tile & EXIT:
                     color = [0, 200, 0]
                     image_tile = image_tile + color
-                    image_tile[1, 1] = [0, 0, 0]
                     image_tile[2, 1] = [0, 0, 0]
+                    image_tile[2, 2] = [0, 0, 0]
                 elif tile & DECOY:
                     color = [200, 200, 0]
                     image_tile = image_tile + color
-                    image_tile[1, 1] = [0, 0, 0]
                     image_tile[2, 1] = [0, 0, 0]
+                    image_tile[2, 2] = [0, 0, 0]
                 else:
                     pass
                 image[h, w] = image_tile

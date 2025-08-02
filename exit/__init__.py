@@ -9,6 +9,7 @@ from .wrappers import (
     DeterministicResetWrapper,
     OraclePreviewWrapper,
     StupidPreviewWrapper,
+    LLMPreviewWrapper,
 )
 from .agents import (
     AttackerAgentBase,

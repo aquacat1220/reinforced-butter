@@ -17,6 +17,7 @@ from exit import (
     DeterministicResetWrapper,
     OraclePreviewWrapper,
     StupidPreviewWrapper,
+    LLMPreviewWrapper,
 )
 from rich import print
 import numpy as np
@@ -42,21 +43,25 @@ env = GymWrapper(
     env,
     attacker_builder,
 )
-env = StupidPreviewWrapper(env, preview_steps=4)
+# env = StupidPreviewWrapper(env, preview_steps=4)
+env = LLMPreviewWrapper(
+    env, preview_steps=4, model_name="gpt-4.1-nano", log_file="./llm.log"
+)
 # env = OraclePreviewWrapper(env, preview_steps=4, attacker_builder=attacker_builder)
 # Set `render_partial` to `True` to make the decoy undistinguishable to the real exit.
 env = PartialObservabilityWrapper(env, render_partial=RENDER_AS_DEFENDER)
 env = StripWrapper(env)
 env = DeterministicResetWrapper(env)
 # %% ---------------- Reset the environment. ----------------
-observation, _ = env.reset(seed=1220, options={"increment_seed_by": 2})
+observation, info = env.reset(seed=1220, options={"increment_seed_by": 2})
 is_done: bool = False
 step = 0
 
 # %% ---------------- Main loop. ----------------
 while True:
     # %% ---------------- Render the current observation. ----------------
-    print(f"{32 - step} turns remaining!")
+    steps_remaining = info["steps_remaining"]
+    print(f"{steps_remaining} turns remaining!")  # type: ignore
     step += 1
     # print(observation[4])
     image = Image.fromarray(env.render())  # type: ignore
@@ -88,7 +93,7 @@ while True:
         continue
 
     # %% ---------------- Feed the action to the environment. ----------------
-    observation, reward, terminated, truncated, _ = env.step(np.int64(action))
+    observation, reward, terminated, truncated, info = env.step(np.int64(action))
     is_done = terminated or truncated
 
     # %% ---------------- ... and repeat until termination! ----------------

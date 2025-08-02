@@ -150,9 +150,9 @@ class ExitCore:
         if not self._random_map:
             self.map: np.ndarray[Any, np.dtype[np.int8]] = PRESET.copy()
             attacker_pos = np.argwhere(self.map & ATTACKER)[0]
-            self.attacker_pos = (attacker_pos[0], attacker_pos[1])
+            self.attacker_pos = (int(attacker_pos[0]), int(attacker_pos[1]))
             defender_pos = np.argwhere(self.map & DEFENDER)[0]
-            self.defender_pos = (defender_pos[0], defender_pos[1])
+            self.defender_pos = (int(defender_pos[0]), int(defender_pos[1]))
             # `PRESET` has two exits in the map.
             exit_poss = np.argwhere(self.map & EXIT)
             # Convert one of them into a decoy.
